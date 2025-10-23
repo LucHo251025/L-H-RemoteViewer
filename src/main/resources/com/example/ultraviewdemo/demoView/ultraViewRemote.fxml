@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.Rectangle?>
+
+<BorderPane style="-fx-background-color: #f5f7fb; -fx-text-fill: #1f2937; -fx-font-family: 'Segoe UI', 'Arial', sans-serif;" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.ultraviewdemo.UltraViewController">
+   
+   <!-- Left Panel - Connections -->
+   <left>
+     <VBox prefWidth="300.0" spacing="15.0" style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-width: 0 1 0 0; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 0);">
+         <!-- Header -->
+         <VBox alignment="CENTER_LEFT" style="-fx-padding: 0 0 20 0;">
+            <Label style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f2937;" text="UltraView Remote" />
+            <Label style="-fx-text-fill: #6b7280; -fx-font-size: 11px; -fx-padding: 2 0 0 0;" text="Control your devices remotely" />
+         </VBox>
+         
+         <!-- Tabs -->
+         <HBox alignment="CENTER" prefHeight="42.0" prefWidth="300.0" spacing="8.0" style="-fx-padding: 0 0 20 0;">
+            <Button style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: 600; -fx-background-radius: 10; -fx-padding: 8 14;" text="Connections" />
+            <Button style="-fx-background-color: #eef2f7; -fx-text-fill: #374151; -fx-font-weight: 500; -fx-background-radius: 10; -fx-padding: 8 14;" text="Settings" />
+         </HBox>
+         
+         <!-- Search & Filter -->
+         <HBox alignment="CENTER_LEFT" spacing="8.0" style="-fx-padding: 8 12 0 12;">
+            <Region HBox.hgrow="ALWAYS" />
+         </HBox>
+         <Separator />
+         
+         <!-- Connections List -->
+         <VBox alignment="CENTER" spacing="15.0">
+            <VBox prefHeight="222.0" prefWidth="303.0" spacing="12.0" style="-fx-padding: 6 12 6 12;">
+               <HBox alignment="CENTER" prefHeight="0.0" prefWidth="276.0">
+                  <children>
+                    <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #111827; -fx-padding: 0 0 10 0;" text="All Connections (3)" />
+                  </children>
+               </HBox>
+               <!-- Workstation-01 (Active) - Styled Card -->
+               <VBox alignment="TOP_LEFT" prefHeight="186.0" prefWidth="291.0" style="-fx-background-color: #ffffff; -fx-background-radius: 16; -fx-padding: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 8, 0, 0, 0); -fx-border-color: #e5e7eb; -fx-border-radius: 16;">
+                  <!-- Title row with status -->
+                  <HBox alignment="CENTER_LEFT" prefHeight="49.0" prefWidth="246.0" spacing="8.0">
+                     <ImageView fitHeight="32.0" fitWidth="32.0" style="-fx-background-color: #3b82f6; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 4, 0, 0, 0);" />
+                     <VBox alignment="CENTER_LEFT" spacing="2.0">
+                        <Label style="-fx-text-fill: #111827; -fx-font-weight: 700; -fx-font-size: 14px;" text="Workstation-01" />
+                        <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="192.168.1.100" />
+                     </VBox>
+                     <Region HBox.hgrow="ALWAYS" />
+                     <Circle radius="5.0" style="-fx-fill: #10b981;" />
+                     <Label style="-fx-text-fill: #9ca3af; -fx-font-weight: 700; -fx-padding: 0 0 0 6;" text="..." />
+                  </HBox>
+                  
+                        <!-- Metrics row: three columns -->
+                  <HBox alignment="CENTER_LEFT" prefHeight="67.0" prefWidth="246.0" spacing="24.0" style="-fx-padding: 0 0 10 10;">
+                     <VBox alignment="CENTER_LEFT">
+                        <Label style="-fx-text-fill: #10b981; -fx-font-weight: 700; -fx-font-size: 14px;" text="15ms" />
+                        <Label style="-fx-text-fill: #6b7280; -fx-font-size: 11px;" text="Ping" />
+                     </VBox>
+                     <VBox alignment="CENTER_LEFT">
+                        <Label style="-fx-text-fill: #111827; -fx-font-weight: 700; -fx-font-size: 14px;" text="60" />
+                        <Label style="-fx-text-fill: #6b7280; -fx-font-size: 11px;" text="FPS" />
+                     </VBox>
+                     <VBox alignment="CENTER_LEFT">
+                        <Label style="-fx-text-fill: #111827; -fx-font-weight: 700; -fx-font-size: 14px;" text="1.2 MB/s" />
+                        <Label style="-fx-text-fill: #6b7280; -fx-font-size: 11px;" text="Speed" />
+                     </VBox>
+                  </HBox>
+                  
+                        <!-- Disconnect button -->
+                  <HBox alignment="CENTER" style="-fx-padding: 0 0 0 8;">
+                     <Button prefHeight="34.0" prefWidth="106.0" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: 600; -fx-background-radius: 10; -fx-padding: 8 16;" text="Disconnect" />
+                     
+                                 <!-- Last connected -->
+                     <Label prefHeight="35.0" prefWidth="145.0" style="-fx-text-fill: #6b7280; -fx-font-size: 12px; -fx-padding: 8 0 6 10;" text="Last connected: 2 minutes ago" />
+                  </HBox>
+               </VBox>
+            </VBox>
+            <HBox alignment="CENTER" prefHeight="10.0" prefWidth="300.0" />
+         </VBox>
+         <HBox alignment="CENTER" prefHeight="70.0" prefWidth="300.0">
+            <children>
+               
+               <!-- Add New Connection Button -->
+               <Button style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: 600; -fx-background-radius: 10; -fx-padding: 10 18;" styleClass="add-connection-button" text="+ Add New Connection" />
+            </children>
+         </HBox>
+      </VBox>
+   </left>
+   
+   <!-- Main Content Area -->
+   <center>
+      <VBox>
+         <!-- Top Bar -->
+         <HBox alignment="CENTER_LEFT" style="-fx-background-color: #ffffff; -fx-padding: 12 16; -fx-spacing: 12; -fx-border-color: #e5e7eb; -fx-border-width: 0 0 1 0;">
+            <Button style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 14; -fx-padding: 6 12;" text="CONNECTED" />
+            <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="(192.168.1.100)" />
+            <Region HBox.hgrow="ALWAYS" />
+            
+            <!-- Quality Controls -->
+            <HBox spacing="5.0">
+               <Button style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-padding: 6 12;" text="Low" />
+               <Button style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-padding: 6 12;" text="Medium" />
+               <Button style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 6 12;" text="High" />
+            </HBox>
+            
+            <!-- Display Controls -->
+            <Button style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-padding: 6 12;" text="Fullscreen" />
+            
+            <!-- Audio Controls -->
+            <Button style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-padding: 6 12;" text="On" />
+            
+            <!-- Performance Metrics -->
+            <HBox alignment="CENTER" spacing="10.0">
+               <Region prefHeight="0.0" prefWidth="0.0" />
+               <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="15ms" />
+               <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="60 FPS" />
+               <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="1.2 MB/s" />
+               <Region prefHeight="0.0" prefWidth="0.0" />
+            </HBox>
+            
+            <!-- Action Buttons -->
+            <Button style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: #374151; -fx-padding: 6 12;" text="Security" />
+            <Button style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: #374151; -fx-padding: 6 12;" text="Reconnect" />
+            <Button style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 6 12;" text="Disconnect" />
+         </HBox>
+         
+         <!-- Remote Desktop View -->
+         <StackPane fx:id="remoteContainer" style="-fx-background-color: #eef2f7; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 0);">
+            <!-- Blue Desktop Background -->
+            <Rectangle height="600.0" style="-fx-fill: #ffffff; -fx-stroke: #e5e7eb; -fx-stroke-width: 1;" width="800.0" />
+            
+            <!-- Mouse Cursor -->
+            <Rectangle height="20.0" style="-fx-fill: #1f2937; -fx-stroke: #00000022; -fx-stroke-width: 1; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 2, 0, 0, 0);" width="20.0" />
+            
+            <!-- Desktop Icons -->
+            <VBox alignment="TOP_LEFT" prefWidth="1116.0" style="-fx-padding: 20;">
+               <VBox prefHeight="234.0" prefWidth="882.0" spacing="25.0">
+                  <VBox alignment="CENTER" spacing="5.0">
+                     <Rectangle height="48.0" style="-fx-fill: #ffaa00; -fx-arc-width: 8; -fx-arc-height: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" width="48.0" />
+                     <Label style="-fx-text-fill: #1f2937; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.7); -fx-background-radius: 2; -fx-padding: 2 4; -fx-border-color: #e5e7eb; -fx-border-radius: 2;" text="Documents" textFill="#817c7c" />
+                  </VBox>
+                  <VBox alignment="CENTER" spacing="5.0">
+                     <Rectangle height="48.0" style="-fx-fill: #ff4444; -fx-arc-width: 8; -fx-arc-height: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" width="48.0" />
+                     <Label style="-fx-text-fill: #1f2937; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.7); -fx-background-radius: 2; -fx-padding: 2 4; -fx-border-color: #e5e7eb; -fx-border-radius: 2;" text="Pictures" textFill="#696969" />
+                  </VBox>
+                  <VBox alignment="CENTER" spacing="5.0">
+                     <Rectangle height="48.0" style="-fx-fill: #4a9eff; -fx-arc-width: 8; -fx-arc-height: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" width="48.0" />
+                     
+                     <!-- Quality Overlay -->
+                     <VBox alignment="TOP_RIGHT" style="-fx-padding: 10;">
+                        <Label style="-fx-text-fill: #374151; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.75); -fx-background-radius: 4; -fx-padding: 4 8; -fx-border-color: #e5e7eb; -fx-border-radius: 4;" text="Quality: 80% • 60 FPS" />
+                     </VBox>
+                     <Label style="-fx-text-fill: #1f2937; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.7); -fx-background-radius: 2; -fx-padding: 2 4; -fx-border-color: #e5e7eb; -fx-border-radius: 2;" text="Computer" textFill="#797979" />
+                  </VBox>
+               </VBox>
+            </VBox>
+         </StackPane>
+      </VBox>
+   </center>
+   
+   <!-- Bottom Bar -->
+   <bottom>
+      <HBox alignment="CENTER_LEFT" style="-fx-background-color: #ffffff; -fx-padding: 10 16; -fx-border-color: #e5e7eb; -fx-border-width: 1 0 0 0;">
+         <!-- Left Icons -->
+         <HBox spacing="15.0">
+            <ImageView fitHeight="24.0" fitWidth="24.0" style="-fx-background-color: #3b82f6; -fx-background-radius: 4;" />
+            <ImageView fitHeight="24.0" fitWidth="24.0" style="-fx-background-color: #9ca3af; -fx-background-radius: 4;" />
+            <ImageView fitHeight="24.0" fitWidth="24.0" style="-fx-background-color: #9ca3af; -fx-background-radius: 4;" />
+            <ImageView fitHeight="24.0" fitWidth="24.0" style="-fx-background-color: #9ca3af; -fx-background-radius: 4;" />
+         </HBox>
+         
+         <Region HBox.hgrow="ALWAYS" />
+         
+         <!-- Right Info -->
+         <HBox alignment="CENTER_RIGHT" spacing="10.0">
+            <ImageView fitHeight="20.0" fitWidth="20.0" style="-fx-background-color: #9ca3af;" />
+            <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="3:24 PM" />
+         </HBox>
+      </HBox>
+   </bottom>
+</BorderPane>
+

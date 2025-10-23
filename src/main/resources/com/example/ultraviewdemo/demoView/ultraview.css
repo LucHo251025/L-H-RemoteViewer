@@ -1,0 +1,402 @@
+/* UltraView Remote Dark Theme CSS */
+
+.root {
+    -fx-background-color: linear-gradient(to bottom, #1a1a1a 0%, #0f0f0f 100%);
+    -fx-text-fill: #ffffff;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+}
+
+/* Left Panel Styles */
+.left-panel {
+    -fx-background-color: linear-gradient(to bottom, #2d2d2d 0%, #1f1f1f 100%);
+    -fx-border-color: #404040;
+    -fx-border-width: 0 1 0 0;
+    -fx-padding: 20;
+    -fx-spacing: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 2, 0);
+}
+
+.header {
+    -fx-padding: 0 0 20 0;
+}
+
+.app-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: linear-gradient(to right, #4a9eff 0%, #ffffff 100%);
+    -fx-effect: dropshadow(gaussian, rgba(74,158,255,0.3), 5, 0, 0, 1);
+}
+
+/* Tab Styles */
+.tab-container {
+    -fx-spacing: 0;
+    -fx-padding: 0 0 20 0;
+}
+
+.tab-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #888888;
+    -fx-font-size: 14px;
+    -fx-padding: 10 20;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 2 0;
+}
+
+.tab-button.active {
+    -fx-text-fill: #4a9eff;
+    -fx-border-color: #4a9eff;
+}
+
+.tab-button:hover {
+    -fx-text-fill: #ffffff;
+}
+
+/* Connections Container */
+.connections-container {
+    -fx-spacing: 15;
+}
+
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #ffffff;
+    -fx-padding: 0 0 10 0;
+}
+
+/* Connection Items */
+.connection-item {
+    -fx-background-color: linear-gradient(to bottom, #3a3a3a 0%, #2d2d2d 100%);
+    -fx-background-radius: 12;
+    -fx-padding: 18;
+    -fx-spacing: 12;
+    -fx-border-color: transparent;
+    -fx-border-radius: 12;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8, 0, 0, 2);
+}
+
+.connection-item.active {
+    -fx-border-color: linear-gradient(to bottom, #4a9eff 0%, #2a5a8a 100%);
+    -fx-background-color: linear-gradient(to bottom, #2a3a4a 0%, #1a2a3a 100%);
+    -fx-effect: dropshadow(gaussian, rgba(74,158,255,0.4), 12, 0, 0, 3);
+}
+
+.connection-item:hover {
+    -fx-background-color: linear-gradient(to bottom, #4a4a4a 0%, #3a3a3a 100%);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 2);
+}
+
+.connection-name {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #ffffff;
+}
+
+.connection-ip {
+    -fx-font-size: 12px;
+    -fx-text-fill: #888888;
+}
+
+.last-connected {
+    -fx-font-size: 12px;
+    -fx-text-fill: #666666;
+}
+
+/* Status Dots */
+.status-dot {
+    -fx-fill: #666666;
+}
+
+.status-dot.active {
+    -fx-fill: #4a9eff;
+}
+
+.status-dot.inactive {
+    -fx-fill: #ff4444;
+}
+
+.status-dot.connecting {
+    -fx-fill: #ffaa00;
+}
+
+/* Connection Icons */
+.connection-icon {
+    -fx-background-color: linear-gradient(to bottom, #4a9eff 0%, #2a5a8a 100%);
+    -fx-background-radius: 20;
+    -fx-effect: dropshadow(gaussian, rgba(74,158,255,0.3), 5, 0, 0, 1);
+}
+
+.connection-icon.windows {
+    -fx-background-color: linear-gradient(to bottom, #0078d4 0%, #005a9e 100%);
+    -fx-effect: dropshadow(gaussian, rgba(0,120,212,0.3), 5, 0, 0, 1);
+}
+
+.connection-icon.mac {
+    -fx-background-color: linear-gradient(to bottom, #ff4444 0%, #cc3333 100%);
+    -fx-effect: dropshadow(gaussian, rgba(255,68,68,0.3), 5, 0, 0, 1);
+}
+
+.connection-icon.ubuntu {
+    -fx-background-color: linear-gradient(to bottom, #e95420 0%, #c4451a 100%);
+    -fx-effect: dropshadow(gaussian, rgba(233,84,32,0.3), 5, 0, 0, 1);
+}
+
+/* Buttons */
+.connect-button {
+    -fx-background-color: linear-gradient(to bottom, #4a9eff 0%, #2a5a8a 100%);
+    -fx-text-fill: #ffffff;
+    -fx-background-radius: 8;
+    -fx-padding: 10 20;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(74,158,255,0.3), 5, 0, 0, 1);
+}
+
+.connect-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #5aaeff 0%, #3a6a9a 100%);
+    -fx-effect: dropshadow(gaussian, rgba(74,158,255,0.5), 8, 0, 0, 2);
+}
+
+.disconnect-button {
+    -fx-background-color: linear-gradient(to bottom, #ff4444 0%, #cc3333 100%);
+    -fx-text-fill: #ffffff;
+    -fx-background-radius: 8;
+    -fx-padding: 10 20;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(255,68,68,0.3), 5, 0, 0, 1);
+}
+
+.disconnect-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #ff5555 0%, #dd4444 100%);
+    -fx-effect: dropshadow(gaussian, rgba(255,68,68,0.5), 8, 0, 0, 2);
+}
+
+.add-connection-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #4a9eff;
+    -fx-border-color: #4a9eff;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 12 20;
+    -fx-font-size: 14px;
+}
+
+.add-connection-button:hover {
+    -fx-background-color: #4a9eff;
+    -fx-text-fill: #ffffff;
+}
+
+/* Top Bar Styles */
+.top-bar {
+    -fx-background-color: linear-gradient(to bottom, #2d2d2d 0%, #1f1f1f 100%);
+    -fx-padding: 15 20;
+    -fx-spacing: 15;
+    -fx-border-color: #404040;
+    -fx-border-width: 0 0 1 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 5, 0, 0, 1);
+}
+
+.connected-status {
+    -fx-background-color: linear-gradient(to bottom, #4a9eff 0%, #2a5a8a 100%);
+    -fx-text-fill: #ffffff;
+    -fx-background-radius: 15;
+    -fx-padding: 8 18;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(74,158,255,0.4), 6, 0, 0, 2);
+}
+
+.connected-ip {
+    -fx-text-fill: #888888;
+    -fx-font-size: 12px;
+}
+
+.quality-button, .display-button, .audio-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #888888;
+    -fx-border-color: #404040;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 5 10;
+    -fx-font-size: 12px;
+}
+
+.quality-button.active, .display-button.active, .audio-button.active {
+    -fx-background-color: #4a9eff;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #4a9eff;
+}
+
+.performance-metric {
+    -fx-text-fill: #888888;
+    -fx-font-size: 12px;
+}
+
+.action-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #888888;
+    -fx-border-color: #404040;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 5 10;
+    -fx-font-size: 12px;
+}
+
+.action-button:hover {
+    -fx-background-color: #4a4a4a;
+    -fx-text-fill: #ffffff;
+}
+
+.disconnect-action-button {
+    -fx-background-color: #ff4444;
+    -fx-text-fill: #ffffff;
+    -fx-background-radius: 4;
+    -fx-padding: 5 10;
+    -fx-font-size: 12px;
+}
+
+.disconnect-action-button:hover {
+    -fx-background-color: #ee3333;
+}
+
+/* Remote Desktop Container */
+.remote-desktop-container {
+    -fx-background-color: #1a1a1a;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 2);
+}
+
+.desktop-background {
+    -fx-fill: linear-gradient(to bottom, #0066cc 0%, #004499 100%);
+}
+
+.desktop-icons {
+    -fx-padding: 20;
+}
+
+.desktop-icon {
+    -fx-fill: #ffaa00;
+    -fx-arc-width: 8;
+    -fx-arc-height: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);
+}
+
+.desktop-icon.documents {
+    -fx-fill: #ffaa00;
+}
+
+.desktop-icon.pictures {
+    -fx-fill: #ff4444;
+}
+
+.desktop-icon.computer {
+    -fx-fill: #4a9eff;
+}
+
+.desktop-icon-label {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 12px;
+    -fx-background-color: rgba(0, 0, 0, 0.5);
+    -fx-background-radius: 2;
+    -fx-padding: 2 4;
+}
+
+.quality-overlay {
+    -fx-padding: 10;
+}
+
+.quality-overlay-text {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 12px;
+    -fx-background-color: rgba(0, 0, 0, 0.7);
+    -fx-background-radius: 4;
+    -fx-padding: 4 8;
+}
+
+.mouse-cursor {
+    -fx-fill: #ffffff;
+    -fx-stroke: #000000;
+    -fx-stroke-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 2, 0, 0, 0);
+}
+
+/* Bottom Bar Styles */
+.bottom-bar {
+    -fx-background-color: linear-gradient(to bottom, #2d2d2d 0%, #1f1f1f 100%);
+    -fx-padding: 12 20;
+    -fx-border-color: #404040;
+    -fx-border-width: 1 0 0 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 5, 0, 0, -1);
+}
+
+.bottom-icon {
+    -fx-background-color: #888888;
+    -fx-background-radius: 4;
+}
+
+.bottom-icon.active {
+    -fx-background-color: #4a9eff;
+}
+
+.bottom-icon:hover {
+    -fx-background-color: #ffffff;
+}
+
+.speaker-icon {
+    -fx-background-color: #888888;
+}
+
+.time-label {
+    -fx-text-fill: #888888;
+    -fx-font-size: 12px;
+}
+
+/* Metrics */
+.metric {
+    -fx-text-fill: #888888;
+    -fx-font-size: 11px;
+    -fx-background-color: #3a3a3a;
+    -fx-background-radius: 3;
+    -fx-padding: 2 6;
+}
+
+.connecting-text {
+    -fx-text-fill: #ffaa00;
+    -fx-font-size: 12px;
+    -fx-font-style: italic;
+}
+
+/* Remote View Styles */
+.remote-view-container {
+    -fx-background-color: #1a1a1a;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 2);
+}
+
+.remote-image-view {
+    -fx-background-color: #000000;
+    -fx-border-color: #404040;
+    -fx-border-width: 1;
+}
+
+/* Connect Screen */
+.subtitle {
+	-fx-text-fill: #aaaaaa;
+	-fx-font-size: 14px;
+}
+
+.text-field {
+	-fx-background-color: #2a2a2a;
+	-fx-text-fill: #ffffff;
+	-fx-background-radius: 6;
+	-fx-border-color: #404040;
+	-fx-border-radius: 6;
+	-fx-padding: 8 10;
+}
+
+.error-text {
+	-fx-text-fill: #ff6666;
+	-fx-font-size: 12px;
+}
