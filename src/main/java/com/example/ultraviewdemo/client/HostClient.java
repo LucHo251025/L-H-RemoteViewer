@@ -85,6 +85,7 @@ public class HostClient extends Application {
 
     private static void handleControlCommand(Robot robot, String command, Rectangle screenRect) {
         try {
+            if (command == null) return;
             String[] parts = command.split(":");
             if (parts.length < 2) return;
             
