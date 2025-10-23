@@ -16,73 +16,90 @@ import java.io.*;
 import java.net.*;
 
 public class ViewerClient extends Application {
-	private String serverHost = "localhost";
-	private int serverPort = 5000;
+    private String serverHost = "localhost";
+    private int serverPort = 5000; // unused in P2P; kept for compatibility
     private String hostId = "";
-	private String password = "";
-	private ImageView remoteImageView;
-	private Socket controlSocket;
+    private String password = "";
+    private ImageView remoteImageView;
+    private Socket controlSocket;
     private MessageModel viewerControlModel;
 
-	@Override
-	public void start(Stage stage) throws Exception {
-		FXMLLoader connectLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/connect-host.fxml"));
-		Scene connectScene = new Scene(connectLoader.load(), 480, 360);
-		String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
-		connectScene.getStylesheets().add(cssPath);
-		stage.setTitle("UltraView Remote - Connect");
-		stage.setScene(connectScene);
-		stage.show();
+    // P2P target resolved from directory server
+    private String hostIp;
+    private int hostStreamPort;
+    private int hostControlPort;
 
-		ConnectHostController controller = connectLoader.getController();
-		controller.setOnConnect(params -> {
-			this.serverHost = params.server;
-			this.serverPort = params.port;
+    @Override
+    public void start(Stage stage) throws Exception {
+        FXMLLoader connectLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/connect-host.fxml"));
+        Scene connectScene = new Scene(connectLoader.load(), 480, 360);
+        String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
+        connectScene.getStylesheets().add(cssPath);
+        stage.setTitle("UltraView Remote - Connect");
+        stage.setScene(connectScene);
+        stage.show();
+
+        ConnectHostController controller = connectLoader.getController();
+        controller.setOnConnect(params -> {
+            this.serverHost = params.server;
+            this.serverPort = params.port;
             this.hostId = params.hostId;
-			this.password = params.password;
+            this.password = params.password;
 
-			// Attempt to connect first; on success, go to control UI
+            // Query directory server for host endpoints, then connect directly
             new Thread(() -> {
-				try (Socket probe = new Socket(serverHost, serverPort)) {
-                    MessageModel viewerModel = new MessageModel(Constant.ACTION_VIEWER, hostId);
-                    viewerModel.setPartner_password(password);
-                    viewerModel.setPartner_id(hostId);
-                    SocketMethodHelpers.sendMessage(probe, viewerModel);
+                try (Socket dir = new Socket(serverHost, 7000)) {
+                    MessageModel q = new MessageModel(Constant.ACTION_VIEWER_QUERY, "viewer");
+                    q.setPartner_id(hostId);
+                    q.setPartner_password(password);
+                    SocketMethodHelpers.sendMessage(dir, q);
 
-                    viewerModel = SocketMethodHelpers.readMessage(probe);
+                    MessageModel resp = SocketMethodHelpers.readMessage(dir);
+                    if (!resp.isSuccess()) {
+                        String code = resp.getMessage();
+                        if ("HOST_NOT_FOUND".equals(code)) {
+                            Platform.runLater(() -> showInfo("Host not found or not registered yet."));
+                        } else if ("AUTH_FAILED".equals(code)) {
+                            Platform.runLater(() -> showError("Authentication failed. Please check Host ID/password."));
+                        } else {
+                            Platform.runLater(() -> showError("Directory query failed: " + code));
+                        }
+                        return;
+                    }
 
-					if ("READY".equals(viewerModel.getMessage())) {
-						Platform.runLater(() -> {
-							try {
-                                openControlWindow();
-                                startNetworkConnection();
-                                startControlConnection();
-							} catch (IOException e) {
-								showError("Failed to load control UI: " + e.getMessage());
-							}
-						});
-					} else if ("NOT_READY".equals(viewerModel.getMessage())) {
-						Platform.runLater(() -> showInfo("Host not started. Please ask the host to click 'Start Sharing' and try again."));
-					} else if ("AUTH_FAILED".equals(viewerModel.getMessage())) {
-						Platform.runLater(() -> showError("Authentication failed. Please check the Host ID and password."));
-					} else {
-						Platform.runLater(() -> showError("Unexpected server response. Please try again."));
-					}
-				} catch (Exception e) {
+                    String[] parts = resp.getMessage().split(":");
+                    if (parts.length < 3) {
+                        Platform.runLater(() -> showError("Invalid directory payload."));
+                        return;
+                    }
+                    hostIp = parts[0];
+                    hostStreamPort = Integer.parseInt(parts[1]);
+                    hostControlPort = Integer.parseInt(parts[2]);
+
+                    Platform.runLater(() -> {
+                        try {
+                            openControlWindow();
+                            startNetworkConnection();
+                            startControlConnection();
+                        } catch (IOException e) {
+                            showError("Failed to load control UI: " + e.getMessage());
+                        }
+                    });
+                } catch (Exception e) {
                     e.printStackTrace();
-					Platform.runLater(() -> showError("Cannot connect to host: " + e.getMessage()));
-				}
-			}).start();
-		});
-	}
+                    Platform.runLater(() -> showError("Cannot reach directory server: " + e.getMessage()));
+                }
+            }).start();
+        });
+    }
 
-	private void showError(String msg) {
-		Alert alert = new Alert(Alert.AlertType.ERROR);
-		alert.setTitle("Connection Error");
-		alert.setHeaderText(null);
-		alert.setContentText(msg);
-		alert.showAndWait();
-	}
+    private void showError(String msg) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Connection Error");
+        alert.setHeaderText(null);
+        alert.setContentText(msg);
+        alert.showAndWait();
+    }
 
     private void showInfo(String msg) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -92,51 +109,51 @@ public class ViewerClient extends Application {
         alert.showAndWait();
     }
 
-	private void openControlWindow() throws IOException {
-		FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/ultraViewRemote.fxml"));
-		Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
-//		String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
-//		scene.getStylesheets().add(cssPath);
+    private void openControlWindow() throws IOException {
+        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/ultraViewRemote.fxml"));
+        Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
+        String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
+        scene.getStylesheets().add(cssPath);
 
         StackPane remoteContainer = (StackPane) scene.lookup("#remoteContainer");
-		if (remoteContainer != null) {
-			remoteContainer.getChildren().clear();
-			remoteImageView = new ImageView();
-			remoteImageView.setFitWidth(1000);
-			remoteImageView.setFitHeight(700);
-			remoteImageView.setPreserveRatio(true);
-			remoteImageView.getStyleClass().add("remote-image-view");
-			
-			// Set minimum size to ensure ImageView is interactive
-		//	remoteImageView.setMinWidth(1000.0);
-		//	remoteImageView.setMinHeight(700.0);
-			
-			// Enable mouse events on ImageView
-			remoteImageView.setMouseTransparent(false);
-			remoteImageView.setPickOnBounds(true);
-			remoteImageView.setFocusTraversable(true);
-			
-			// Set a placeholder image to ensure ImageView is interactive
-			remoteImageView.setStyle("-fx-background-color: #1a1a1a;");
-			
-			// Create a simple placeholder image
-			WritableImage placeholder = new WritableImage(1000, 700);
-			remoteImageView.setImage(placeholder);
-			
-			System.out.println("ImageView created with size: " + remoteImageView.getFitWidth() + "x" + remoteImageView.getFitHeight());
-			
-			remoteContainer.getChildren().add(remoteImageView);
-			
-			// Add mouse and keyboard event handlers for remote control
-			setupRemoteControlEvents(remoteImageView);
-			
-			// Request focus to ensure events are captured
-			Platform.runLater(() -> {
-				remoteImageView.requestFocus();
-				System.out.println("ImageView focus requested");
-				System.out.println("ImageView is focused: " + remoteImageView.isFocused());
-			});
-		}
+        if (remoteContainer != null) {
+            remoteContainer.getChildren().clear();
+            remoteImageView = new ImageView();
+            remoteImageView.setFitWidth(1000);
+            remoteImageView.setFitHeight(700);
+            remoteImageView.setPreserveRatio(true);
+            remoteImageView.getStyleClass().add("remote-image-view");
+
+            // Set minimum size to ensure ImageView is interactive
+            // remoteImageView.setMinWidth(1000.0);
+            // remoteImageView.setMinHeight(700.0);
+
+            // Enable mouse events on ImageView
+            remoteImageView.setMouseTransparent(false);
+            remoteImageView.setPickOnBounds(true);
+            remoteImageView.setFocusTraversable(true);
+
+            // Set a placeholder image to ensure ImageView is interactive
+            remoteImageView.setStyle("-fx-background-color: #1a1a1a;");
+
+            // Create a simple placeholder image
+            WritableImage placeholder = new WritableImage(1000, 700);
+            remoteImageView.setImage(placeholder);
+
+            System.out.println("ImageView created with size: " + remoteImageView.getFitWidth() + "x" + remoteImageView.getFitHeight());
+
+            remoteContainer.getChildren().add(remoteImageView);
+
+            // Add mouse and keyboard event handlers for remote control
+            setupRemoteControlEvents(remoteImageView);
+
+            // Request focus to ensure events are captured
+            Platform.runLater(() -> {
+                remoteImageView.requestFocus();
+                System.out.println("ImageView focus requested");
+                System.out.println("ImageView is focused: " + remoteImageView.isFocused());
+            });
+        }
 
         Stage controlStage = new Stage();
         controlStage.setTitle("UltraView Remote - Viewer");
@@ -144,123 +161,118 @@ public class ViewerClient extends Application {
         controlStage.setMinWidth(1000);
         controlStage.setMinHeight(700);
         controlStage.show();
-	}
+    }
 
-	private void startNetworkConnection() {
-		new Thread(() -> {
-			try (Socket socket = new Socket(serverHost, serverPort)) {
-                MessageModel viewerModel = new MessageModel(Constant.ACTION_VIEWER, hostId);
-                viewerModel.setPartner_password(password);
-                viewerModel.setPartner_id(hostId);
-                SocketMethodHelpers.sendMessage(socket, viewerModel);
-
-				while (true) {
-                    viewerModel = SocketMethodHelpers.readMessage(socket);
-					byte[] buffer = viewerModel.getData();
-                    if(buffer!=null) {
+    private void startNetworkConnection() {
+        new Thread(() -> {
+            try (Socket socket = new Socket(hostIp, hostStreamPort)) {
+                while (true) {
+                    MessageModel viewerModel = SocketMethodHelpers.readMessage(socket);
+                    byte[] buffer = viewerModel.getData();
+                    if (buffer != null) {
                         Image img = new Image(new ByteArrayInputStream(buffer));
                         Platform.runLater(() -> {
                             if (remoteImageView != null) remoteImageView.setImage(img);
                         });
                     }
-				}
-			} catch (Exception e) {
+                }
+            } catch (Exception e) {
                 e.printStackTrace();
-				Platform.runLater(() -> showError("Disconnected: " + e.getMessage()));
-			}
-		}).start();
-	}
-	
-	private void startControlConnection() {
-		new Thread(() -> {
-			try {
-				System.out.println("Attempting to connect to control server at " + serverHost + ":" + (serverPort + 1));
-				controlSocket = new Socket(serverHost, serverPort + 1);
+                Platform.runLater(() -> showError("Disconnected: " + e.getMessage()));
+            }
+        }).start();
+    }
+
+    private void startControlConnection() {
+        new Thread(() -> {
+            try {
+                System.out.println("Attempting to connect to control at " + hostIp + ":" + hostControlPort);
+                controlSocket = new Socket(hostIp, hostControlPort);
                 viewerControlModel = new MessageModel(Constant.ACTION_VIEWER_CONTROLLER, hostId);
                 viewerControlModel.setPartner_password(password);
                 viewerControlModel.setPartner_id(hostId);
                 SocketMethodHelpers.sendMessage(controlSocket, viewerControlModel);
 
-				System.out.println("Control connection established successfully!");
-			} catch (Exception e) {
-				System.err.println("Failed to establish control connection: " + e.getMessage());
-				e.printStackTrace();
-			}
-		}).start();
-	}
-	
-	private void setupRemoteControlEvents(ImageView imageView) {
-		System.out.println("Setting up remote control events for ImageView");
-		System.out.println("ImageView bounds: " + imageView.getBoundsInLocal());
-		
-		// Mouse click events
-		imageView.setOnMouseClicked(event -> {
-			System.out.println("Mouse clicked at: " + event.getX() + ", " + event.getY() + " button: " + event.getButton());
-			if (viewerControlModel != null) {
-				double x = event.getX();
-				double y = event.getY();
-				String button = event.getButton().toString();
+                System.out.println("Control connection established successfully!");
+            } catch (Exception e) {
+                System.err.println("Failed to establish control connection: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void setupRemoteControlEvents(ImageView imageView) {
+        System.out.println("Setting up remote control events for ImageView");
+        System.out.println("ImageView bounds: " + imageView.getBoundsInLocal());
+
+        // Mouse click events
+        imageView.setOnMouseClicked(event -> {
+            System.out.println("Mouse clicked at: " + event.getX() + ", " + event.getY() + " button: " + event.getButton());
+            if (viewerControlModel != null) {
+                double x = event.getX();
+                double y = event.getY();
+                String button = event.getButton().toString();
                 viewerControlModel.setMessage("MOUSE_CLICK:" + x + ":" + y + ":" + button);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
-				System.out.println("Sent control command: MOUSE_CLICK:" + x + ":" + y + ":" + button);
-			} else {
-				System.out.println("Control writer is null!");
-			}
-		});
-		
-		// Mouse drag events
-		imageView.setOnMouseDragged(event -> {
-			System.out.println("Mouse dragged to: " + event.getX() + ", " + event.getY());
-			if (viewerControlModel != null) {
-				double x = event.getX();
-				double y = event.getY();
+                System.out.println("Sent control command: MOUSE_CLICK:" + x + ":" + y + ":" + button);
+            } else {
+                System.out.println("Control writer is null!");
+            }
+        });
+        
+        // Mouse drag events
+        imageView.setOnMouseDragged(event -> {
+            System.out.println("Mouse dragged to: " + event.getX() + ", " + event.getY());
+            if (viewerControlModel != null) {
+                double x = event.getX();
+                double y = event.getY();
                 viewerControlModel.setMessage("MOUSE_DRAG:" + x + ":" + y);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
-			}
-		});
-		
-		// Mouse scroll events
-		imageView.setOnScroll(event -> {
-			System.out.println("Mouse scrolled at: " + event.getX() + ", " + event.getY() + " delta: " + event.getDeltaY());
-			if (viewerControlModel != null) {
-				double x = event.getX();
-				double y = event.getY();
-				double deltaY = event.getDeltaY();
+            }
+        });
+        
+        // Mouse scroll events
+        imageView.setOnScroll(event -> {
+            System.out.println("Mouse scrolled at: " + event.getX() + ", " + event.getY() + " delta: " + event.getDeltaY());
+            if (viewerControlModel != null) {
+                double x = event.getX();
+                double y = event.getY();
+                double deltaY = event.getDeltaY();
                 viewerControlModel.setMessage("MOUSE_SCROLL:" + x + ":" + y + ":" + deltaY);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
-			}
-		});
-		
-		// Keyboard events
-		imageView.setFocusTraversable(true);
-		imageView.setOnKeyPressed(event -> {
-			System.out.println("Key pressed: " + event.getCode());
-			if (viewerControlModel != null) {
-				String keyCode = event.getCode().toString();
+            }
+        });
+        
+        // Keyboard events
+        imageView.setFocusTraversable(true);
+        imageView.setOnKeyPressed(event -> {
+            System.out.println("Key pressed: " + event.getCode());
+            if (viewerControlModel != null) {
+                String keyCode = event.getCode().toString();
                 viewerControlModel.setMessage("KEY_PRESSED:" + keyCode);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
-			}
-		});
-		
-		imageView.setOnKeyReleased(event -> {
-			System.out.println("Key released: " + event.getCode());
-			if (viewerControlModel != null) {
-				String keyCode = event.getCode().toString();
+            }
+        });
+        
+        imageView.setOnKeyReleased(event -> {
+            System.out.println("Key released: " + event.getCode());
+            if (viewerControlModel != null) {
+                String keyCode = event.getCode().toString();
                 viewerControlModel.setMessage("KEY_RELEASED:" + keyCode);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
-			}
-		});
-		
-		imageView.setOnKeyTyped(event -> {
-			if (viewerControlModel != null) {
-				String character = event.getCharacter();
+            }
+        });
+        
+        imageView.setOnKeyTyped(event -> {
+            if (viewerControlModel != null) {
+                String character = event.getCharacter();
                 viewerControlModel.setMessage("KEY_TYPED:" + character);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
-			}
-		});
-	}
+            }
+        });
+    }
 
-	public static void main(String[] args) {
-		launch();
-	}
+    public static void main(String[] args) {
+        launch();
+    }
 }
