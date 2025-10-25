@@ -9,7 +9,6 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.shape.Circle?>
 <?import javafx.scene.shape.Rectangle?>
 
 <BorderPane style="-fx-background-color: #f5f7fb; -fx-text-fill: #1f2937; -fx-font-family: 'Segoe UI', 'Arial', sans-serif;" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.ultraviewdemo.UltraViewController">
@@ -38,59 +37,11 @@
          <!-- Connections List -->
          <VBox alignment="CENTER" spacing="15.0">
             <VBox prefHeight="222.0" prefWidth="303.0" spacing="12.0" style="-fx-padding: 6 12 6 12;">
-               <HBox alignment="CENTER" prefHeight="0.0" prefWidth="276.0">
-                  <children>
-                    <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #111827; -fx-padding: 0 0 10 0;" text="All Connections (3)" />
-                  </children>
-               </HBox>
-               <!-- Workstation-01 (Active) - Styled Card -->
-               <VBox alignment="TOP_LEFT" prefHeight="186.0" prefWidth="291.0" style="-fx-background-color: #ffffff; -fx-background-radius: 16; -fx-padding: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 8, 0, 0, 0); -fx-border-color: #e5e7eb; -fx-border-radius: 16;">
-                  <!-- Title row with status -->
-                  <HBox alignment="CENTER_LEFT" prefHeight="49.0" prefWidth="246.0" spacing="8.0">
-                     <ImageView fitHeight="32.0" fitWidth="32.0" style="-fx-background-color: #3b82f6; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 4, 0, 0, 0);" />
-                     <VBox alignment="CENTER_LEFT" spacing="2.0">
-                        <Label style="-fx-text-fill: #111827; -fx-font-weight: 700; -fx-font-size: 14px;" text="Workstation-01" />
-                        <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="192.168.1.100" />
-                     </VBox>
-                     <Region HBox.hgrow="ALWAYS" />
-                     <Circle radius="5.0" style="-fx-fill: #10b981;" />
-                     <Label style="-fx-text-fill: #9ca3af; -fx-font-weight: 700; -fx-padding: 0 0 0 6;" text="..." />
-                  </HBox>
-                  
-                        <!-- Metrics row: three columns -->
-                  <HBox alignment="CENTER_LEFT" prefHeight="67.0" prefWidth="246.0" spacing="24.0" style="-fx-padding: 0 0 10 10;">
-                     <VBox alignment="CENTER_LEFT">
-                        <Label style="-fx-text-fill: #10b981; -fx-font-weight: 700; -fx-font-size: 14px;" text="15ms" />
-                        <Label style="-fx-text-fill: #6b7280; -fx-font-size: 11px;" text="Ping" />
-                     </VBox>
-                     <VBox alignment="CENTER_LEFT">
-                        <Label style="-fx-text-fill: #111827; -fx-font-weight: 700; -fx-font-size: 14px;" text="60" />
-                        <Label style="-fx-text-fill: #6b7280; -fx-font-size: 11px;" text="FPS" />
-                     </VBox>
-                     <VBox alignment="CENTER_LEFT">
-                        <Label style="-fx-text-fill: #111827; -fx-font-weight: 700; -fx-font-size: 14px;" text="1.2 MB/s" />
-                        <Label style="-fx-text-fill: #6b7280; -fx-font-size: 11px;" text="Speed" />
-                     </VBox>
-                  </HBox>
-                  
-                        <!-- Disconnect button -->
-                  <HBox alignment="CENTER" style="-fx-padding: 0 0 0 8;">
-                     <Button prefHeight="34.0" prefWidth="106.0" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: 600; -fx-background-radius: 10; -fx-padding: 8 16;" text="Disconnect" />
-                     
-                                 <!-- Last connected -->
-                     <Label prefHeight="35.0" prefWidth="145.0" style="-fx-text-fill: #6b7280; -fx-font-size: 12px; -fx-padding: 8 0 6 10;" text="Last connected: 2 minutes ago" />
-                  </HBox>
-               </VBox>
+               <HBox alignment="CENTER" prefHeight="0.0" prefWidth="276.0" />
             </VBox>
             <HBox alignment="CENTER" prefHeight="10.0" prefWidth="300.0" />
          </VBox>
-         <HBox alignment="CENTER" prefHeight="70.0" prefWidth="300.0">
-            <children>
-               
-               <!-- Add New Connection Button -->
-               <Button style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: 600; -fx-background-radius: 10; -fx-padding: 10 18;" styleClass="add-connection-button" text="+ Add New Connection" />
-            </children>
-         </HBox>
+         <HBox alignment="CENTER" prefHeight="70.0" prefWidth="300.0" />
       </VBox>
    </left>
    
@@ -186,4 +137,3 @@
       </HBox>
    </bottom>
 </BorderPane>
-
