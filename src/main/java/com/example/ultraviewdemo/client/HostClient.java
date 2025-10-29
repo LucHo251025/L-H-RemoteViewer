@@ -70,6 +70,11 @@ public class HostClient extends Application {
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
                 MessageModel hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
+                // Authenticate viewer before handling control commands
+                if (hostControlModel == null || hostControlModel.getPartner_password() == null || !hostControlModel.getPartner_password().equals(password)) {
+                    try { controlSocket.close(); } catch (Exception ignore) {}
+                    return;
+                }
                 Robot robot = new Robot();
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 

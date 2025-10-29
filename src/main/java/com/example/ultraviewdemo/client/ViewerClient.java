@@ -46,7 +46,37 @@ public class ViewerClient extends Application {
             this.hostId = params.hostId;
             this.password = params.password;
 
-            // Query directory server for host endpoints, then connect directly
+            // If hostId is in the form host:port, connect directly without DirectoryServer
+            boolean direct = false;
+            try {
+                int idx = hostId.lastIndexOf(":");
+                if (idx > 0 && idx < hostId.length() - 1) {
+                    String h = hostId.substring(0, idx);
+                    String p = hostId.substring(idx + 1);
+                    int stream = Integer.parseInt(p);
+                    if (stream > 0 && stream <= 65535) {
+                        hostIp = h;
+                        hostStreamPort = stream;
+                        hostControlPort = stream + 1;
+                        direct = true;
+                    }
+                }
+            } catch (Exception ignore) {}
+
+            if (direct) {
+                Platform.runLater(() -> {
+                    try {
+                        openControlWindow();
+                        startNetworkConnection();
+                        startControlConnection();
+                    } catch (IOException e) {
+                        showError("Failed to load control UI: " + e.getMessage());
+                    }
+                });
+                return;
+            }
+
+            // Otherwise, query directory server for host endpoints, then connect directly
             new Thread(() -> {
                 try (Socket dir = new Socket(serverHost, 7000)) {
                     MessageModel q = new MessageModel(Constant.ACTION_VIEWER_QUERY, "viewer");
