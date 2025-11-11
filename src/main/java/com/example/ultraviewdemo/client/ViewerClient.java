@@ -260,37 +260,51 @@ public class ViewerClient extends Application {
         if (audioThread != null && audioThread.isAlive()) return;
         audioThread = new Thread(() -> {
             int audioPort = hostStreamPort + 2;
-            AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
-            try (Socket s = new Socket(hostIp, audioPort); InputStream in = s.getInputStream()) {
-                audioSocket = s;
-                DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
-                if (!AudioSystem.isLineSupported(info)) {
-                    System.err.println("Speaker line not supported for format");
-                    return;
+            while (audioEnabled) {
+                try (Socket s = new Socket(hostIp, audioPort); InputStream in = s.getInputStream()) {
+                    audioSocket = s;
+
+                    AudioFormat fmt = pickOutputFormat();
+                    DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
+                    if (!AudioSystem.isLineSupported(info)) {
+                        System.err.println("Speaker line not supported for selected format");
+                        break; // cannot play at all
+                    }
+                    speakerLine = (SourceDataLine) AudioSystem.getLine(info);
+                    speakerLine.open(fmt);
+                    speakerLine.start();
+                    byte[] buf = new byte[3200]; // slightly larger buffer for stability
+                    while (audioEnabled && !s.isClosed()) {
+                        int n = in.read(buf);
+                        if (n == -1) break;
+                        if (n > 0) speakerLine.write(buf, 0, n);
+                    }
+                } catch (Exception e) {
+                    if (audioEnabled) System.err.println("Audio player error (will retry): " + e.getMessage());
+                } finally {
+                    if (speakerLine != null) {
+                        try { speakerLine.drain(); speakerLine.stop(); speakerLine.close(); } catch (Exception ignore) {}
+                        speakerLine = null;
+                    }
+                    if (audioSocket != null) {
+                        try { audioSocket.close(); } catch (Exception ignore) {}
+                        audioSocket = null;
+                    }
                 }
-                speakerLine = (SourceDataLine) AudioSystem.getLine(info);
-                speakerLine.open(fmt);
-                speakerLine.start();
-                byte[] buf = new byte[1600];
-                while (audioEnabled && !s.isClosed()) {
-                    int n = in.read(buf);
-                    if (n == -1) break;
-                    if (n > 0) speakerLine.write(buf, 0, n);
-                }
-            } catch (Exception e) {
-                if (audioEnabled) System.err.println("Audio player error: " + e.getMessage());
-            } finally {
-                if (speakerLine != null) {
-                    try { speakerLine.drain(); speakerLine.stop(); speakerLine.close(); } catch (Exception ignore) {}
-                    speakerLine = null;
-                }
-                if (audioSocket != null) {
-                    try { audioSocket.close(); } catch (Exception ignore) {}
-                    audioSocket = null;
+                if (audioEnabled) {
+                    try { Thread.sleep(300); } catch (InterruptedException ignore) {}
                 }
             }
         }, "ViewerAudioPlayer");
         audioThread.start();
+    }
+
+    private AudioFormat pickOutputFormat() {
+        // Prefer 16k mono 16-bit LE, fallback to 44.1k if not supported
+        AudioFormat f16k = new AudioFormat(16000f, 16, 1, true, false);
+        if (AudioSystem.isLineSupported(new DataLine.Info(SourceDataLine.class, f16k))) return f16k;
+        AudioFormat f44 = new AudioFormat(44100f, 16, 1, true, false);
+        return f44;
     }
 
     private synchronized void stopAudioPlayer() {
@@ -298,6 +312,10 @@ public class ViewerClient extends Application {
         try { if (audioSocket != null) audioSocket.close(); } catch (Exception ignore) {}
         try { if (speakerLine != null) { speakerLine.stop(); speakerLine.close(); } } catch (Exception ignore) {}
         speakerLine = null;
+        if (audioThread != null) {
+            try { audioThread.join(200); } catch (InterruptedException ignore) {}
+            audioThread = null;
+        }
     }
 
     private void setupRemoteControlEvents(ImageView imageView) {
