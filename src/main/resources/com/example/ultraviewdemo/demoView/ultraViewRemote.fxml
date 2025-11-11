@@ -19,7 +19,7 @@
 <BorderPane fx:id="rootPane" style="-fx-background-color: #f5f7fb; -fx-text-fill: #1f2937; -fx-font-family: 'Segoe UI', 'Arial', sans-serif;" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.ultraviewdemo.UltraViewController">
     <!-- Collapsed left pane definition (only icon) -->
     <fx:define>
-        <VBox fx:id="leftCollapsed" prefWidth="36.0" alignment="CENTER" style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-width: 0 1 0 0;">
+        <VBox fx:id="leftCollapsed" prefWidth="36.0" alignment="TOP_LEFT" style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-width: 0 1 0 0; -fx-padding: 8 4;">
             <Button fx:id="openSidebarBtn" text="☰" style="-fx-background-color: transparent; -fx-text-fill: #6b7280; -fx-font-size: 16px; -fx-padding: 4 6;" />
         </VBox>
     </fx:define>
