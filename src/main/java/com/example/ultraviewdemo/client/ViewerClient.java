@@ -12,6 +12,8 @@ import javafx.scene.image.*;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+
+import javax.sound.sampled.*;
 import java.io.*;
 import java.net.*;
 
@@ -23,6 +25,12 @@ public class ViewerClient extends Application {
     private ImageView remoteImageView;
     private Socket controlSocket;
     private MessageModel viewerControlModel;
+
+    // Audio
+    private volatile Socket audioSocket;
+    private volatile Thread audioThread;
+    private volatile SourceDataLine speakerLine;
+    private volatile boolean audioEnabled = false;
 
     // P2P target resolved from directory server
     private String hostIp;
@@ -145,6 +153,12 @@ public class ViewerClient extends Application {
         String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
         scene.getStylesheets().add(cssPath);
 
+        // Wire UI audio toggle to network control
+        com.example.ultraviewdemo.UltraViewController ctrl = fxmlLoader.getController();
+        if (ctrl != null) {
+            ctrl.setOnAudioToggle(this::enableAudio);
+        }
+
         StackPane remoteContainer = (StackPane) scene.lookup("#remoteContainer");
         if (remoteContainer != null) {
             remoteContainer.getChildren().clear();
@@ -228,7 +242,62 @@ public class ViewerClient extends Application {
                 System.err.println("Failed to establish control connection: " + e.getMessage());
                 e.printStackTrace();
             }
-        }).start();
+        }, "ViewerControlConnect").start();
+    }
+
+    // Audio control called from UI
+    private synchronized void enableAudio(boolean enable) {
+        if (enable == audioEnabled) return;
+        audioEnabled = enable;
+        if (viewerControlModel != null && controlSocket != null && controlSocket.isConnected()) {
+            viewerControlModel.setMessage("AUDIO:" + (enable ? "ON" : "OFF"));
+            SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+        }
+        if (enable) startAudioPlayer(); else stopAudioPlayer();
+    }
+
+    private void startAudioPlayer() {
+        if (audioThread != null && audioThread.isAlive()) return;
+        audioThread = new Thread(() -> {
+            int audioPort = hostStreamPort + 2;
+            AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
+            try (Socket s = new Socket(hostIp, audioPort); InputStream in = s.getInputStream()) {
+                audioSocket = s;
+                DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
+                if (!AudioSystem.isLineSupported(info)) {
+                    System.err.println("Speaker line not supported for format");
+                    return;
+                }
+                speakerLine = (SourceDataLine) AudioSystem.getLine(info);
+                speakerLine.open(fmt);
+                speakerLine.start();
+                byte[] buf = new byte[1600];
+                while (audioEnabled && !s.isClosed()) {
+                    int n = in.read(buf);
+                    if (n == -1) break;
+                    if (n > 0) speakerLine.write(buf, 0, n);
+                }
+            } catch (Exception e) {
+                if (audioEnabled) System.err.println("Audio player error: " + e.getMessage());
+            } finally {
+                if (speakerLine != null) {
+                    try { speakerLine.drain(); speakerLine.stop(); speakerLine.close(); } catch (Exception ignore) {}
+                    speakerLine = null;
+                }
+                if (audioSocket != null) {
+                    try { audioSocket.close(); } catch (Exception ignore) {}
+                    audioSocket = null;
+                }
+            }
+        }, "ViewerAudioPlayer");
+        audioThread.start();
+    }
+
+    private synchronized void stopAudioPlayer() {
+        audioEnabled = false;
+        try { if (audioSocket != null) audioSocket.close(); } catch (Exception ignore) {}
+        try { if (speakerLine != null) { speakerLine.stop(); speakerLine.close(); } } catch (Exception ignore) {}
+        speakerLine = null;
     }
 
     private void setupRemoteControlEvents(ImageView imageView) {
