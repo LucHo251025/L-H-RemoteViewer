@@ -12,6 +12,7 @@ import javafx.scene.layout.VBox;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.function.Consumer;
 
 public class UltraViewController implements Initializable {
 
@@ -77,6 +78,7 @@ public class UltraViewController implements Initializable {
 
     // Audio state for toggle button
     private boolean isAudioOn = true;
+    private Consumer<Boolean> onAudioToggle; // callback to Viewer to start/stop audio
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -177,9 +179,12 @@ public class UltraViewController implements Initializable {
 
     private void toggleAudio() {
         System.out.println("Toggling audio...");
-        // Toggle audio on/off (UI state). Hook actual audio stream here if available.
+        // Toggle audio on/off (UI state) and notify callback
         isAudioOn = !isAudioOn;
         applyAudioButtonState();
+        if (onAudioToggle != null) {
+            onAudioToggle.accept(isAudioOn);
+        }
     }
 
     private void showSecuritySettings() {
@@ -224,6 +229,10 @@ public class UltraViewController implements Initializable {
                 highQualityButton.getStyleClass().add("active");
             }
         }
+    }
+
+    public void setOnAudioToggle(Consumer<Boolean> handler) {
+        this.onAudioToggle = handler;
     }
 
     private void applyAudioButtonState() {

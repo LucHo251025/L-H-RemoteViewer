@@ -9,19 +9,22 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.*;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 public class HostClient extends Application {
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
-        // Start local stream/control servers on provided port and port+1
+        // Start local stream/control/audio servers on provided ports
         ServerSocket streamServer = new ServerSocket(port);
         ServerSocket controlServer = new ServerSocket(port + 1);
+        ServerSocket audioServer = new ServerSocket(port + 2);
 
         // Register with directory server for signaling so viewer can discover us
         String localIp = InetAddress.getLocalHost().getHostAddress();
@@ -36,8 +39,12 @@ public class HostClient extends Application {
             }
         }
 
+        // Set up audio accept and sender (controlled by AUDIO:ON/OFF)
+        AudioManager audioManager = new AudioManager(audioServer, shouldRun);
+        audioManager.startAcceptLoop();
+
         // Accept one control connection to handle input
-        startControlAccept(controlServer, hostId, password, shouldRun);
+        startControlAccept(controlServer, hostId, password, shouldRun, audioManager);
 
         // Accept one stream connection and start sending frames
         try (Socket streamSocket = streamServer.accept()) {
@@ -63,10 +70,11 @@ public class HostClient extends Application {
         } finally {
             try { streamServer.close(); } catch (Exception ignore) {}
             try { controlServer.close(); } catch (Exception ignore) {}
+            try { audioServer.close(); } catch (Exception ignore) {}
         }
     }
 
-    private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun) {
+    private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun, AudioManager audioManager) {
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
                 MessageModel hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
@@ -74,16 +82,16 @@ public class HostClient extends Application {
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 
                 while (shouldRun.getAsBoolean() && hostControlModel != null) {
-                    handleControlCommand(robot, hostControlModel.getMessage(), screenRect);
+                    handleControlCommand(robot, hostControlModel.getMessage(), screenRect, audioManager);
                     hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
                 }
             } catch (Exception e) {
                 System.err.println("Control connection error: " + e.getMessage());
             }
-        }).start();
+        }, "HostControlAccept").start();
     }
 
-    private static void handleControlCommand(Robot robot, String command, Rectangle screenRect) {
+    private static void handleControlCommand(Robot robot, String command, Rectangle screenRect, AudioManager audioManager) {
         try {
             if (command == null) return;
             String[] parts = command.split(":");
@@ -168,10 +176,107 @@ public class HostClient extends Application {
                         }
                     }
                     break;
+                case "AUDIO":
+                    if (parts.length >= 2) {
+                        String state = parts[1];
+                        boolean enable = "ON".equalsIgnoreCase(state);
+                        if (enable) audioManager.enable(); else audioManager.disable();
+                    }
+                    break;
             }
         } catch (Exception e) {
             System.err.println("Error handling control command: " + e.getMessage());
         }
+    }
+
+    // Manages accepting an audio client and streaming microphone PCM when enabled
+    private static class AudioManager {
+        private final ServerSocket server;
+        private final AtomicBoolean shouldRun;
+        private final AtomicBoolean enabled = new AtomicBoolean(false);
+        private volatile Socket client;
+        private Thread acceptThread;
+        private Thread sendThread;
+        private TargetDataLine micLine;
+
+        AudioManager(ServerSocket server, BooleanSupplier runFlag) {
+            this.server = server;
+            this.shouldRun = new AtomicBoolean(true);
+            // Map to external flag: when runFlag turns false, we stop
+            new Thread(() -> {
+                while (runFlag.getAsBoolean()) {
+                    try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+                }
+                this.shouldRun.set(false);
+                disable();
+                closeQuiet(server);
+                closeQuiet(client);
+            }, "AudioRunGuard").start();
+        }
+
+        void startAcceptLoop() {
+            acceptThread = new Thread(() -> {
+                try {
+                    while (shouldRun.get()) {
+                        client = server.accept();
+                        System.out.println("Audio client connected: " + client.getRemoteSocketAddress());
+                        // If already enabled, (re)start sending to new client
+                        if (enabled.get()) startSender();
+                    }
+                } catch (IOException e) {
+                    if (shouldRun.get()) System.err.println("Audio accept stopped: " + e.getMessage());
+                }
+            }, "AudioAcceptLoop");
+            acceptThread.start();
+        }
+
+        void enable() { enabled.set(true); startSender(); }
+        void disable() { enabled.set(false); stopSender(); }
+
+        private synchronized void startSender() {
+            if (sendThread != null && sendThread.isAlive()) return;
+            if (client == null || client.isClosed()) return;
+            sendThread = new Thread(() -> {
+                AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
+                try (OutputStream out = client.getOutputStream()) {
+                    DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
+                    if (!AudioSystem.isLineSupported(info)) {
+                        System.err.println("Microphone line not supported for format");
+                        return;
+                    }
+                    micLine = (TargetDataLine) AudioSystem.getLine(info);
+                    micLine.open(fmt);
+                    micLine.start();
+                    byte[] buf = new byte[1600]; // ~50ms
+                    while (shouldRun.get() && enabled.get() && !client.isClosed()) {
+                        int n = micLine.read(buf, 0, buf.length);
+                        if (n > 0) out.write(buf, 0, n);
+                    }
+                } catch (IOException | LineUnavailableException e) {
+                    if (shouldRun.get()) System.err.println("Audio send error: " + e.getMessage());
+                } finally {
+                    if (micLine != null) {
+                        try { micLine.stop(); micLine.close(); } catch (Exception ignore) {}
+                        micLine = null;
+                    }
+                }
+            }, "AudioSender");
+            sendThread.start();
+        }
+
+        private synchronized void stopSender() {
+            if (micLine != null) {
+                try { micLine.stop(); micLine.close(); } catch (Exception ignore) {}
+                micLine = null;
+            }
+            if (sendThread != null) {
+                try { sendThread.join(50); } catch (InterruptedException ignore) {}
+                sendThread = null;
+            }
+        }
+
+        private void closeQuiet(Closeable c) { try { if (c != null) c.close(); } catch (Exception ignore) {} }
+        private void closeQuiet(ServerSocket s) { try { if (s != null) s.close(); } catch (Exception ignore) {} }
     }
 
     private static int getKeyCode(String keyCode) {
