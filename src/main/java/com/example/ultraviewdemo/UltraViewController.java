@@ -76,8 +76,8 @@ public class UltraViewController implements Initializable {
     @FXML
     private Button openSidebarBtn; // button inside leftCollapsed
 
-    // Audio state for toggle button
-    private boolean isAudioOn = true;
+    // Audio state for toggle button (default OFF for clarity/stability)
+    private boolean isAudioOn = false;
     private Consumer<Boolean> onAudioToggle; // callback to Viewer to start/stop audio
     
     @Override
