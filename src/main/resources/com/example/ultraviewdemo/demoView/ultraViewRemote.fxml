@@ -2,6 +2,7 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
@@ -82,29 +83,39 @@
             <Button style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 6 12;" text="Disconnect" />
          </HBox>
          
-         <!-- Remote Desktop View -->
-         <StackPane fx:id="remoteContainer" style="-fx-background-color: #eef2f7; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 0);">
-            <!-- Blue Desktop Background -->
-            <Rectangle height="600.0" style="-fx-fill: #ffffff; -fx-stroke: #e5e7eb; -fx-stroke-width: 1;" width="800.0" />
-            
-            <!-- Mouse Cursor -->
-            <Rectangle height="20.0" style="-fx-fill: #1f2937; -fx-stroke: #00000022; -fx-stroke-width: 1; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 2, 0, 0, 0);" width="20.0" />
-            
-            <!-- Desktop Icons -->
-            <VBox alignment="TOP_LEFT" prefWidth="1116.0" style="-fx-padding: 20;">
-               <VBox prefHeight="234.0" prefWidth="882.0" spacing="25.0">
-                  <VBox alignment="CENTER" spacing="5.0">
-                     <Rectangle height="48.0" style="-fx-fill: #ffaa00; -fx-arc-width: 8; -fx-arc-height: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" width="48.0" />
-                     <Label style="-fx-text-fill: #1f2937; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.7); -fx-background-radius: 2; -fx-padding: 2 4; -fx-border-color: #e5e7eb; -fx-border-radius: 2;" text="Documents" textFill="#817c7c" />
-                  </VBox>
-                  <VBox alignment="CENTER" spacing="5.0">
-                     <Rectangle height="48.0" style="-fx-fill: #ff4444; -fx-arc-width: 8; -fx-arc-height: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" width="48.0" />
-                     <Label style="-fx-text-fill: #1f2937; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.7); -fx-background-radius: 2; -fx-padding: 2 4; -fx-border-color: #e5e7eb; -fx-border-radius: 2;" text="Pictures" textFill="#696969" />
-                  </VBox>
-                  <VBox alignment="CENTER" spacing="5.0">
-                     <Rectangle height="48.0" style="-fx-fill: #4a9eff; -fx-arc-width: 8; -fx-arc-height: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" width="48.0" />
-                     
-                     <!-- Quality Overlay -->
+         <!-- Remote Desktop View with drag-to-scroll -->
+        <ScrollPane fx:id="remoteScroll" fitToWidth="true" fitToHeight="true" pannable="true" style="-fx-background-color: transparent; -fx-padding: 0;">
+           <content>
+              <StackPane fx:id="remoteContainer" style="-fx-background-color: #eef2f7; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 0);">
+                 <!-- Blue Desktop Background -->
+                 <Rectangle height="600.0" style="-fx-fill: #ffffff; -fx-stroke: #e5e7eb; -fx-stroke-width: 1;" width="800.0" />
+                 <!-- Mouse Cursor -->
+                 <Rectangle height="20.0" style="-fx-fill: #1f2937; -fx-stroke: #00000022; -fx-stroke-width: 1; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 2, 0, 0, 0);" width="20.0" />
+                 <!-- Desktop Icons -->
+                 <VBox alignment="TOP_LEFT" prefWidth="1116.0" style="-fx-padding: 20;">
+                    <VBox prefHeight="234.0" prefWidth="882.0" spacing="25.0">
+                       <VBox alignment="CENTER" spacing="5.0">
+                          <Rectangle height="48.0" style="-fx-fill: #ffaa00; -fx-arc-width: 8; -fx-arc-height: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" width="48.0" />
+                          <Label style="-fx-text-fill: #1f2937; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.7); -fx-background-radius: 2; -fx-padding: 2 4; -fx-border-color: #e5e7eb; -fx-border-radius: 2;" text="Documents" textFill="#817c7c" />
+                       </VBox>
+                       <VBox alignment="CENTER" spacing="5.0">
+                          <Rectangle height="48.0" style="-fx-fill: #ff4444; -fx-arc-width: 8; -fx-arc-height: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" width="48.0" />
+                          <Label style="-fx-text-fill: #1f2937; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.7); -fx-background-radius: 2; -fx-padding: 2 4; -fx-border-color: #e5e7eb; -fx-border-radius: 2;" text="Pictures" textFill="#696969" />
+                       </VBox>
+                       <VBox alignment="CENTER" spacing="5.0">
+                          <Rectangle height="48.0" style="-fx-fill: #4a9eff; -fx-arc-width: 8; -fx-arc-height: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" width="48.0" />
+                          
+                          <!-- Quality Overlay -->
+                          <VBox alignment="TOP_RIGHT" style="-fx-padding: 10;">
+                             <Label style="-fx-text-fill: #374151; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.75); -fx-background-radius: 4; -fx-padding: 4 8; -fx-border-color: #e5e7eb; -fx-border-radius: 4;" text="Quality: 80% • 60 FPS" />
+                          </VBox>
+                          <Label style="-fx-text-fill: #1f2937; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.7); -fx-background-radius: 2; -fx-padding: 2 4; -fx-border-color: #e5e7eb; -fx-border-radius: 2;" text="Computer" textFill="#797979" />
+                       </VBox>
+                    </VBox>
+                 </VBox>
+              </StackPane>
+           </content>
+        </ScrollPane>
                      <VBox alignment="TOP_RIGHT" style="-fx-padding: 10;">
                         <Label style="-fx-text-fill: #374151; -fx-font-size: 12px; -fx-background-color: rgba(255, 255, 255, 0.75); -fx-background-radius: 4; -fx-padding: 4 8; -fx-border-color: #e5e7eb; -fx-border-radius: 4;" text="Quality: 80% • 60 FPS" />
                      </VBox>

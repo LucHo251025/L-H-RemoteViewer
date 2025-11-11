@@ -1,8 +1,12 @@
 package com.example.ultraviewdemo.client;
 
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.util.Duration;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -28,6 +32,7 @@ public class ConnectHostController {
     @FXML private Button startBtn;
     @FXML private Button stopBtn;
     @FXML private Label statusLabel;
+    @FXML private Button copyBtn;
 
     private Thread sharingThread;
     private volatile boolean running = false;
@@ -54,6 +59,19 @@ public class ConnectHostController {
         regenerateBtn.setOnAction(e -> hostPasswordField.setText(generatePassword()));
         startBtn.setOnAction(e -> startSharing());
         stopBtn.setOnAction(e -> stopSharing());
+        if (copyBtn != null) {
+            copyBtn.setOnAction(e -> {
+                String id = hostIdField.getText() == null ? "" : hostIdField.getText();
+                ClipboardContent content = new ClipboardContent();
+                content.putString(id);
+                Clipboard.getSystemClipboard().setContent(content);
+                String old = copyBtn.getText();
+                copyBtn.setText("Copied");
+                PauseTransition pt = new PauseTransition(Duration.seconds(1.2));
+                pt.setOnFinished(ev -> copyBtn.setText(old));
+                pt.play();
+            });
+        }
     }
 
     private void handleConnect() {
