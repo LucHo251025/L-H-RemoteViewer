@@ -73,6 +73,13 @@ public class HostClient extends Application {
                 Robot robot = new Robot();
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 
+                // Send screen size info to viewer
+                try {
+                    MessageModel info = new MessageModel(Constant.ACTION_HOST, hostId);
+                    info.setMessage("HOST_SCREEN:" + screenRect.width + ":" + screenRect.height);
+                    SocketMethodHelpers.sendMessage(controlSocket, info);
+                } catch (Exception ignore) {}
+
                 while (shouldRun.getAsBoolean() && hostControlModel != null) {
                     handleControlCommand(robot, hostControlModel.getMessage(), screenRect);
                     hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
@@ -98,9 +105,9 @@ public class HostClient extends Application {
                         double y = Double.parseDouble(parts[2]);
                         String button = parts[3];
                         
-                        // Scale coordinates to actual screen size
-                        int screenX = (int) (x * screenRect.width / 1000);
-                        int screenY = (int) (y * screenRect.height / 700);
+                        // Treat incoming coordinates as absolute host pixels
+                        int screenX = (int) x;
+                        int screenY = (int) y;
                         
                         int buttonMask = "PRIMARY".equals(button) ? InputEvent.BUTTON1_DOWN_MASK :
                                         "SECONDARY".equals(button) ? InputEvent.BUTTON3_DOWN_MASK :
@@ -117,8 +124,8 @@ public class HostClient extends Application {
                         double x = Double.parseDouble(parts[1]);
                         double y = Double.parseDouble(parts[2]);
                         
-                        int screenX = (int) (x * screenRect.width / 1000);
-                        int screenY = (int) (y * screenRect.height / 700);
+                        int screenX = (int) x;
+                        int screenY = (int) y;
                         
                         robot.mouseMove(screenX, screenY);
                     }
@@ -130,8 +137,8 @@ public class HostClient extends Application {
                         double y = Double.parseDouble(parts[2]);
                         double deltaY = Double.parseDouble(parts[3]);
                         
-                        int screenX = (int) (x * screenRect.width / 1000);
-                        int screenY = (int) (y * screenRect.height / 700);
+                        int screenX = (int) x;
+                        int screenY = (int) y;
                         
                         robot.mouseMove(screenX, screenY);
                         robot.mouseWheel((int) (deltaY / 40)); // Scale scroll amount

@@ -12,6 +12,7 @@ import javafx.scene.image.*;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.scene.input.MouseEvent;
 import java.io.*;
 import java.net.*;
 
@@ -23,6 +24,8 @@ public class ViewerClient extends Application {
     private ImageView remoteImageView;
     private Socket controlSocket;
     private MessageModel viewerControlModel;
+    private volatile int hostScreenWidth = 1920;
+    private volatile int hostScreenHeight = 1080;
 
     // P2P target resolved from directory server
     private String hostIp;
@@ -32,11 +35,14 @@ public class ViewerClient extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         FXMLLoader connectLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/connect-host.fxml"));
-        Scene connectScene = new Scene(connectLoader.load(), 480, 360);
+        Scene connectScene = new Scene(connectLoader.load(), 900, 650);
         String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
         connectScene.getStylesheets().add(cssPath);
         stage.setTitle("UltraView Remote - Connect");
         stage.setScene(connectScene);
+        stage.setMinWidth(700);
+        stage.setMinHeight(500);
+        stage.centerOnScreen();
         stage.show();
 
         ConnectHostController controller = connectLoader.getController();
@@ -194,6 +200,33 @@ public class ViewerClient extends Application {
                 SocketMethodHelpers.sendMessage(controlSocket, viewerControlModel);
 
                 System.out.println("Control connection established successfully!");
+
+                // Start a reader thread to receive host screen info and any future control messages
+                Thread reader = new Thread(() -> {
+                    try {
+                        while (true) {
+                            MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
+                            if (incoming == null) break;
+                            String msg = incoming.getMessage();
+                            if (msg != null && msg.startsWith("HOST_SCREEN:")) {
+                                String[] p = msg.split(":");
+                                if (p.length >= 3) {
+                                    try {
+                                        int w = Integer.parseInt(p[1]);
+                                        int h = Integer.parseInt(p[2]);
+                                        hostScreenWidth = Math.max(1, w);
+                                        hostScreenHeight = Math.max(1, h);
+                                        System.out.println("Host screen size received: " + hostScreenWidth + "x" + hostScreenHeight);
+                                    } catch (NumberFormatException ignore) {}
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Control reader ended: " + e.getMessage());
+                    }
+                });
+                reader.setDaemon(true);
+                reader.start();
             } catch (Exception e) {
                 System.err.println("Failed to establish control connection: " + e.getMessage());
                 e.printStackTrace();
@@ -209,8 +242,9 @@ public class ViewerClient extends Application {
         imageView.setOnMouseClicked(event -> {
             System.out.println("Mouse clicked at: " + event.getX() + ", " + event.getY() + " button: " + event.getButton());
             if (viewerControlModel != null) {
-                double x = event.getX();
-                double y = event.getY();
+                double[] mapped = mapToVirtual(imageView, event.getX(), event.getY());
+                double x = mapped[0];
+                double y = mapped[1];
                 String button = event.getButton().toString();
                 viewerControlModel.setMessage("MOUSE_CLICK:" + x + ":" + y + ":" + button);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
@@ -224,8 +258,9 @@ public class ViewerClient extends Application {
         imageView.setOnMouseDragged(event -> {
             System.out.println("Mouse dragged to: " + event.getX() + ", " + event.getY());
             if (viewerControlModel != null) {
-                double x = event.getX();
-                double y = event.getY();
+                double[] mapped = mapToVirtual(imageView, event.getX(), event.getY());
+                double x = mapped[0];
+                double y = mapped[1];
                 viewerControlModel.setMessage("MOUSE_DRAG:" + x + ":" + y);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
             }
@@ -235,8 +270,9 @@ public class ViewerClient extends Application {
         imageView.setOnScroll(event -> {
             System.out.println("Mouse scrolled at: " + event.getX() + ", " + event.getY() + " delta: " + event.getDeltaY());
             if (viewerControlModel != null) {
-                double x = event.getX();
-                double y = event.getY();
+                double[] mapped = mapToVirtual(imageView, event.getX(), event.getY());
+                double x = mapped[0];
+                double y = mapped[1];
                 double deltaY = event.getDeltaY();
                 viewerControlModel.setMessage("MOUSE_SCROLL:" + x + ":" + y + ":" + deltaY);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
@@ -270,6 +306,88 @@ public class ViewerClient extends Application {
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
             }
         });
+    }
+    private double[] mapToVirtual(ImageView iv, double eventX, double eventY) {
+        try {
+            Image img = iv.getImage();
+            if (img == null) return new double[]{eventX, eventY};
+
+            double imgW = img.getWidth();
+            double imgH = img.getHeight();
+            if (imgW <= 0 || imgH <= 0) return new double[]{eventX, eventY};
+
+            double localX = eventX;
+            double localY = eventY;
+            double boundW = iv.getBoundsInLocal().getWidth();
+            double boundH = iv.getBoundsInLocal().getHeight();
+
+            if (eventX < 0 || eventY < 0 || eventX > boundW || eventY > boundH) {
+                try {
+                    javafx.geometry.Point2D p = iv.sceneToLocal(eventX, eventY);
+                    localX = p.getX();
+                    localY = p.getY();
+                } catch (Exception ex) {
+                }
+            }
+
+            double displayW = boundW;
+            double displayH = boundH;
+
+            if (displayW <= 0 || displayH <= 0) {
+                displayW = iv.getFitWidth() > 0 ? iv.getFitWidth() : imgW;
+                displayH = iv.getFitHeight() > 0 ? iv.getFitHeight() : imgH;
+            }
+
+            javafx.geometry.Rectangle2D viewport = iv.getViewport();
+            double vpX = 0, vpY = 0, vpW = imgW, vpH = imgH;
+            boolean hasViewport = viewport != null;
+            if (hasViewport) {
+                vpX = viewport.getMinX();
+                vpY = viewport.getMinY();
+                vpW = viewport.getWidth();
+                vpH = viewport.getHeight();
+                if (vpW <= 0 || vpH <= 0) {
+                    hasViewport = false;
+                    vpX = vpY = 0;
+                    vpW = imgW;
+                    vpH = imgH;
+                }
+            }
+
+            double renderW = displayW;
+            double renderH = displayH;
+            double offsetX = 0;
+            double offsetY = 0;
+
+            if (iv.isPreserveRatio()) {
+                double scale = Math.min(displayW / vpW, displayH / vpH);
+                renderW = vpW * scale;
+                renderH = vpH * scale;
+                offsetX = (displayW - renderW) / 2.0;
+                offsetY = (displayH - renderH) / 2.0;
+            } else {
+                renderW = displayW;
+                renderH = displayH;
+                offsetX = 0;
+                offsetY = 0;
+            }
+
+            double nx = (localX - offsetX) / renderW;
+            double ny = (localY - offsetY) / renderH;
+
+            if (Double.isNaN(nx) || Double.isInfinite(nx)) nx = -1;
+            if (Double.isNaN(ny) || Double.isInfinite(ny)) ny = -1;
+
+            nx = Math.max(0, Math.min(1, nx));
+            ny = Math.max(0, Math.min(1, ny));
+
+            double vx = vpX + nx * vpW;
+            double vy = vpY + ny * vpH;
+
+            return new double[]{nx * hostScreenWidth, ny * hostScreenHeight};
+        } catch (Exception e) {
+            return new double[]{eventX, eventY};
+        }
     }
 
     public static void main(String[] args) {
