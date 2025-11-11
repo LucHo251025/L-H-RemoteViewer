@@ -22,9 +22,10 @@ import java.util.function.BooleanSupplier;
 public class HostClient extends Application {
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
         // Start local stream/control/audio servers on provided ports
-        ServerSocket streamServer = new ServerSocket(port);
-        ServerSocket controlServer = new ServerSocket(port + 1);
-        ServerSocket audioServer = new ServerSocket(port + 2);
+        ServerSocket streamServer = createServerSocket(port);
+        ServerSocket controlServer = createServerSocket(port + 1);
+        ServerSocket audioServer = createServerSocket(port + 2);
+        ServerSocket uplinkServer = createServerSocket(port + 3); // viewer mic -> host speakers
 
         // Register with directory server for signaling so viewer can discover us
         String localIp = InetAddress.getLocalHost().getHostAddress();
@@ -43,8 +44,12 @@ public class HostClient extends Application {
         AudioManager audioManager = new AudioManager(audioServer, shouldRun);
         audioManager.startAcceptLoop();
 
+        // Set up uplink (viewer -> host) playback manager
+        UplinkManager uplinkManager = new UplinkManager(uplinkServer, shouldRun);
+        uplinkManager.startAcceptLoop();
+
         // Accept one control connection to handle input
-        startControlAccept(controlServer, hostId, password, shouldRun, audioManager);
+        startControlAccept(controlServer, hostId, password, shouldRun, audioManager, uplinkManager);
 
         // Accept one stream connection and start sending frames
         try (Socket streamSocket = streamServer.accept()) {
@@ -71,10 +76,22 @@ public class HostClient extends Application {
             try { streamServer.close(); } catch (Exception ignore) {}
             try { controlServer.close(); } catch (Exception ignore) {}
             try { audioServer.close(); } catch (Exception ignore) {}
+            try { uplinkServer.close(); } catch (Exception ignore) {}
         }
     }
 
-    private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun, AudioManager audioManager) {
+    private static ServerSocket createServerSocket(int port) throws IOException {
+        try {
+            ServerSocket ss = new ServerSocket();
+            ss.setReuseAddress(true);
+            ss.bind(new InetSocketAddress(port));
+            return ss;
+        } catch (BindException be) {
+            throw new IOException("Port " + port + " is already in use. Please close other instances or choose a different base port.", be);
+        }
+    }
+
+    private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun, AudioManager audioManager, UplinkManager uplinkManager) {
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
                 MessageModel hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
@@ -82,7 +99,7 @@ public class HostClient extends Application {
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 
                 while (shouldRun.getAsBoolean() && hostControlModel != null) {
-                    handleControlCommand(robot, hostControlModel.getMessage(), screenRect, audioManager);
+                    handleControlCommand(robot, hostControlModel.getMessage(), screenRect, audioManager, uplinkManager);
                     hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
                 }
             } catch (Exception e) {
@@ -91,7 +108,7 @@ public class HostClient extends Application {
         }, "HostControlAccept").start();
     }
 
-    private static void handleControlCommand(Robot robot, String command, Rectangle screenRect, AudioManager audioManager) {
+    private static void handleControlCommand(Robot robot, String command, Rectangle screenRect, AudioManager audioManager, UplinkManager uplinkManager) {
         try {
             if (command == null) return;
             String[] parts = command.split(":");
@@ -183,13 +200,20 @@ public class HostClient extends Application {
                         if (enable) audioManager.enable(); else audioManager.disable();
                     }
                     break;
+                case "AUDIO_UP":
+                    if (parts.length >= 2) {
+                        String state = parts[1];
+                        boolean enable = "ON".equalsIgnoreCase(state);
+                        if (enable) uplinkManager.enable(); else uplinkManager.disable();
+                    }
+                    break;
             }
         } catch (Exception e) {
             System.err.println("Error handling control command: " + e.getMessage());
         }
     }
 
-    // Manages accepting an audio client and streaming microphone PCM when enabled
+    // Manages accepting an audio client and streaming microphone PCM when enabled (Host -> Viewer)
     private static class AudioManager {
         private final ServerSocket server;
         private final AtomicBoolean shouldRun;
@@ -272,6 +296,94 @@ public class HostClient extends Application {
             if (sendThread != null) {
                 try { sendThread.join(50); } catch (InterruptedException ignore) {}
                 sendThread = null;
+            }
+        }
+
+        private void closeQuiet(Closeable c) { try { if (c != null) c.close(); } catch (Exception ignore) {} }
+        private void closeQuiet(ServerSocket s) { try { if (s != null) s.close(); } catch (Exception ignore) {} }
+    }
+
+    // Manages receiving PCM from viewer and playing on host speakers when enabled (Viewer -> Host)
+    private static class UplinkManager {
+        private final ServerSocket server;
+        private final AtomicBoolean shouldRun;
+        private final AtomicBoolean enabled = new AtomicBoolean(false);
+        private volatile Socket client;
+        private Thread acceptThread;
+        private Thread playThread;
+        private SourceDataLine speakerLine;
+
+        UplinkManager(ServerSocket server, BooleanSupplier runFlag) {
+            this.server = server;
+            this.shouldRun = new AtomicBoolean(true);
+            new Thread(() -> {
+                while (runFlag.getAsBoolean()) {
+                    try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+                }
+                this.shouldRun.set(false);
+                disable();
+                closeQuiet(server);
+                closeQuiet(client);
+            }, "UplinkRunGuard").start();
+        }
+
+        void startAcceptLoop() {
+            acceptThread = new Thread(() -> {
+                try {
+                    while (shouldRun.get()) {
+                        client = server.accept();
+                        System.out.println("Audio uplink client connected: " + client.getRemoteSocketAddress());
+                        if (enabled.get()) startPlayer();
+                    }
+                } catch (IOException e) {
+                    if (shouldRun.get()) System.err.println("Audio uplink accept stopped: " + e.getMessage());
+                }
+            }, "AudioUplinkAcceptLoop");
+            acceptThread.start();
+        }
+
+        void enable() { enabled.set(true); startPlayer(); }
+        void disable() { enabled.set(false); stopPlayer(); }
+
+        private synchronized void startPlayer() {
+            if (playThread != null && playThread.isAlive()) return;
+            if (client == null || client.isClosed()) return;
+            playThread = new Thread(() -> {
+                AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
+                try (InputStream in = client.getInputStream()) {
+                    DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
+                    if (!AudioSystem.isLineSupported(info)) {
+                        System.err.println("Host speaker line not supported for format");
+                        return;
+                    }
+                    speakerLine = (SourceDataLine) AudioSystem.getLine(info);
+                    speakerLine.open(fmt);
+                    speakerLine.start();
+                    byte[] buf = new byte[1600];
+                    int n;
+                    while (shouldRun.get() && enabled.get() && !client.isClosed() && (n = in.read(buf)) != -1) {
+                        if (n > 0) speakerLine.write(buf, 0, n);
+                    }
+                } catch (IOException | LineUnavailableException e) {
+                    if (shouldRun.get()) System.err.println("Audio uplink play error: " + e.getMessage());
+                } finally {
+                    if (speakerLine != null) {
+                        try { speakerLine.drain(); speakerLine.stop(); speakerLine.close(); } catch (Exception ignore) {}
+                        speakerLine = null;
+                    }
+                }
+            }, "AudioUplinkPlayer");
+            playThread.start();
+        }
+
+        private synchronized void stopPlayer() {
+            if (speakerLine != null) {
+                try { speakerLine.stop(); speakerLine.close(); } catch (Exception ignore) {}
+                speakerLine = null;
+            }
+            if (playThread != null) {
+                try { playThread.join(50); } catch (InterruptedException ignore) {}
+                playThread = null;
             }
         }
 
