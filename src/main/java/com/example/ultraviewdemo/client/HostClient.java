@@ -19,7 +19,11 @@ import java.net.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
+import static com.example.ultraviewdemo.client.ViewerClient.getAudioSaveFile;
+import static com.example.ultraviewdemo.client.ViewerClient.writeWavPcm16Le;
+
 public class HostClient extends Application {
+
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
         // Start local stream/control/audio servers on provided ports
         ServerSocket streamServer = createServerSocket(port);
@@ -317,6 +321,7 @@ public class HostClient extends Application {
         private Thread acceptThread;
         private Thread playThread;
         private SourceDataLine speakerLine;
+        private ByteArrayOutputStream sample = new ByteArrayOutputStream();
 
         UplinkManager(ServerSocket server, BooleanSupplier runFlag) {
             this.server = server;
@@ -367,7 +372,10 @@ public class HostClient extends Application {
                     byte[] buf = new byte[1600];
                     int n;
                     while (shouldRun.get() && enabled.get() && !client.isClosed() && (n = in.read(buf)) != -1) {
-                        if (n > 0) speakerLine.write(buf, 0, n);
+                        if (n > 0) {
+                            speakerLine.write(buf, 0, n);
+                            sample.write(buf, 0, n);
+                        }
                     }
                 } catch (IOException | LineUnavailableException e) {
                     if (shouldRun.get()) System.err.println("Audio uplink play error: " + e.getMessage());
@@ -375,6 +383,9 @@ public class HostClient extends Application {
                     if (speakerLine != null) {
                         try { speakerLine.drain(); speakerLine.stop(); speakerLine.close(); } catch (Exception ignore) {}
                         speakerLine = null;
+                    }
+                    if (sample.size() > 0) {
+                        try { writeWavPcm16Le(getAudioSaveFile("host_received_test"), sample.toByteArray(), 16000, 1); } catch (Exception ignore) {}
                     }
                 }
             }, "AudioUplinkPlayer");
