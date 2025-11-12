@@ -336,7 +336,8 @@ public class ViewerClient extends Application {
             while (audioEnabled) {
                 try (Socket s = new Socket(hostIp, uplinkPort); OutputStream out = s.getOutputStream()) {
                     uplinkSocket = s;
-                    AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
+                    // Use 44.1kHz for better device compatibility
+                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
                     DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
                     if (!AudioSystem.isLineSupported(info)) {
                         break;
@@ -344,7 +345,8 @@ public class ViewerClient extends Application {
                     micLine = (TargetDataLine) AudioSystem.getLine(info);
                     micLine.open(fmt);
                     micLine.start();
-                    byte[] buf = new byte[1600];
+                    // ~50ms @ 44.1kHz mono 16-bit ~= 44100 * 2 * 0.05 ≈ 4410 bytes
+                    byte[] buf = new byte[4410];
                     while (audioEnabled && !s.isClosed()) {
                         int n = micLine.read(buf, 0, buf.length);
                         if (n > 0) out.write(buf, 0, n);
