@@ -259,7 +259,6 @@ public class ViewerClient extends Application {
             SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
         }
         if (enable) {
-            new Thread(this::runViewerMicTest, "ViewerMicTest").start();
             startAudioPlayer();
             startAudioUplink();
         } else {
