@@ -58,7 +58,7 @@
                               style="-fx-background-color: #fafafa; -fx-background-insets: 0; -fx-background-radius: 10; -fx-border-color: #e5e7eb; -fx-border-radius: 10;" />
                     <HBox spacing="8.0" alignment="CENTER_LEFT">
                         <TextField fx:id="chatInputField" promptText="Type a message..." HBox.hgrow="ALWAYS"
-                                   style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-padding: 8 10; -fx-text-inner-color: #111827; -fx-prompt-text-fill: #9ca3af;" />
+                                   style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-padding: 8 10; -fx-text-inner-color: #111827;-fx-text-fill: #000000; -fx-prompt-text-fill: #9ca3af;" />
                         <Button fx:id="sendChatBtn" text="Send"
                                 style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 10; -fx-font-weight: 700; -fx-padding: 8 14;" />
                     </HBox>

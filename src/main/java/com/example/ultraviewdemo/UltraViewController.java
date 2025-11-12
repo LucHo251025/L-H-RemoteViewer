@@ -5,12 +5,17 @@ import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
 import javafx.scene.control.ComboBox;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.geometry.Pos;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -83,7 +88,7 @@ public class UltraViewController implements Initializable {
     private Consumer<Boolean> onAudioToggle; // callback to Viewer to start/stop audio
 
     // Chat UI
-    @FXML private ListView<String> chatListView;
+    @FXML private ListView<ChatMessage> chatListView;
     @FXML private TextField chatInputField;
     @FXML private Button sendChatBtn;
     private Consumer<String> onChatSend;
@@ -102,6 +107,40 @@ public class UltraViewController implements Initializable {
         }
         if (chatInputField != null) {
             chatInputField.setOnAction(e -> sendChatInternal()); // Enter to send
+        }
+        if (chatListView != null) {
+            chatListView.setCellFactory(lv -> new ListCell<>() {
+                @Override
+                protected void updateItem(ChatMessage item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setGraphic(null);
+                        setText(null);
+                        return;
+                    }
+                    Label bubble = new Label(item.text);
+                    bubble.setWrapText(true);
+                    bubble.setMaxWidth(180);
+                    bubble.setStyle(item.self
+                            ? "-fx-background-color: #DCFCE7; -fx-text-fill: #065F46; -fx-padding: 8 10; -fx-background-radius: 12;"
+                            : "-fx-background-color: #E5E7EB; -fx-text-fill: #111827; -fx-padding: 8 10; -fx-background-radius: 12;");
+                    Label name = new Label(item.self ? "You" : (item.sender != null ? item.sender : "Peer"));
+                    name.setStyle("-fx-font-size: 10px; -fx-text-fill: #6B7280;");
+                    VBox msgBox = new VBox(4, name, bubble);
+                    HBox row = new HBox();
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+                    if (item.self) {
+                        row.getChildren().addAll(spacer, msgBox);
+                        row.setAlignment(Pos.CENTER_RIGHT);
+                    } else {
+                        row.getChildren().addAll(msgBox, spacer);
+                        row.setAlignment(Pos.CENTER_LEFT);
+                    }
+                    setGraphic(row);
+                    setText(null);
+                }
+            });
         }
         if (qualityCombo != null) {
             if (qualityCombo.getItems() != null && !qualityCombo.getItems().isEmpty()) {
@@ -256,7 +295,8 @@ public class UltraViewController implements Initializable {
 
     public void addChatMessage(String sender, String text) {
         if (chatListView != null) {
-            chatListView.getItems().add((sender != null ? sender + ": " : "") + text);
+            boolean self = "You".equalsIgnoreCase(sender);
+            chatListView.getItems().add(new ChatMessage(self, sender, text));
             chatListView.scrollTo(chatListView.getItems().size() - 1);
         }
     }
@@ -290,5 +330,16 @@ public class UltraViewController implements Initializable {
     private void expandSidebar() {
         if (rootPane == null || leftPane == null || leftCollapsed == null) return;
         rootPane.setLeft(leftPane);
+    }
+
+    private static class ChatMessage {
+        final boolean self;
+        final String sender;
+        final String text;
+        ChatMessage(boolean self, String sender, String text) {
+            this.self = self;
+            this.sender = sender;
+            this.text = text;
+        }
     }
 }
