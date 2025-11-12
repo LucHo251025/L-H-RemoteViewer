@@ -25,7 +25,7 @@ public class HostClient extends Application {
         ServerSocket streamServer = createServerSocket(port);
         ServerSocket controlServer = createServerSocket(port + 1);
         ServerSocket audioServer = createServerSocket(port + 2);
-        ServerSocket uplinkServer = createServerSocket(port + 3); // viewer mic -> host speakers
+        ServerSocket uplinkServer = createServerSocket(port + 3);
 
         // Register with directory server for signaling so viewer can discover us
         String localIp = InetAddress.getLocalHost().getHostAddress();

@@ -31,6 +31,9 @@ public class ViewerClient extends Application {
     private volatile Thread audioThread;
     private volatile SourceDataLine speakerLine;
     private volatile boolean audioEnabled = false;
+    private volatile Socket uplinkSocket;
+    private volatile Thread uplinkThread;
+    private volatile TargetDataLine micLine;
 
     // P2P target resolved from directory server
     private String hostIp;
@@ -222,8 +225,16 @@ public class ViewerClient extends Application {
         if (viewerControlModel != null && controlSocket != null && controlSocket.isConnected()) {
             viewerControlModel.setMessage("AUDIO:" + (enable ? "ON" : "OFF"));
             SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+            viewerControlModel.setMessage("AUDIO_UP:" + (enable ? "ON" : "OFF"));
+            SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
         }
-        if (enable) startAudioPlayer(); else stopAudioPlayer();
+        if (enable) {
+            startAudioPlayer();
+            startAudioUplink();
+        } else {
+            stopAudioPlayer();
+            stopAudioUplink();
+        }
     }
 
     private void startAudioPlayer() {
@@ -285,6 +296,55 @@ public class ViewerClient extends Application {
         if (audioThread != null) {
             try { audioThread.join(200); } catch (InterruptedException ignore) {}
             audioThread = null;
+        }
+    }
+
+    private void startAudioUplink() {
+        if (uplinkThread != null && uplinkThread.isAlive()) return;
+        uplinkThread = new Thread(() -> {
+            int uplinkPort = hostStreamPort + 3;
+            while (audioEnabled) {
+                try (Socket s = new Socket(hostIp, uplinkPort); OutputStream out = s.getOutputStream()) {
+                    uplinkSocket = s;
+                    AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
+                    DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
+                    if (!AudioSystem.isLineSupported(info)) {
+                        break;
+                    }
+                    micLine = (TargetDataLine) AudioSystem.getLine(info);
+                    micLine.open(fmt);
+                    micLine.start();
+                    byte[] buf = new byte[1600];
+                    while (audioEnabled && !s.isClosed()) {
+                        int n = micLine.read(buf, 0, buf.length);
+                        if (n > 0) out.write(buf, 0, n);
+                    }
+                } catch (Exception e) {
+                } finally {
+                    if (micLine != null) {
+                        try { micLine.stop(); micLine.close(); } catch (Exception ignore) {}
+                        micLine = null;
+                    }
+                    if (uplinkSocket != null) {
+                        try { uplinkSocket.close(); } catch (Exception ignore) {}
+                        uplinkSocket = null;
+                    }
+                }
+                if (audioEnabled) {
+                    try { Thread.sleep(300); } catch (InterruptedException ignore) {}
+                }
+            }
+        }, "ViewerAudioUplink");
+        uplinkThread.start();
+    }
+
+    private synchronized void stopAudioUplink() {
+        try { if (uplinkSocket != null) uplinkSocket.close(); } catch (Exception ignore) {}
+        try { if (micLine != null) { micLine.stop(); micLine.close(); } } catch (Exception ignore) {}
+        micLine = null;
+        if (uplinkThread != null) {
+            try { uplinkThread.join(200); } catch (InterruptedException ignore) {}
+            uplinkThread = null;
         }
     }
 
