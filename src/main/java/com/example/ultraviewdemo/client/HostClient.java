@@ -103,7 +103,7 @@ public class HostClient extends Application {
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 
                 while (shouldRun.getAsBoolean() && hostControlModel != null) {
-                    handleControlCommand(robot, hostControlModel.getMessage(), screenRect, audioManager, uplinkManager);
+                    handleControlCommand(robot, hostControlModel.getMessage(), screenRect, audioManager, uplinkManager, controlSocket, hostId);
                     hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
                 }
             } catch (Exception e) {
@@ -112,7 +112,7 @@ public class HostClient extends Application {
         }, "HostControlAccept").start();
     }
 
-    private static void handleControlCommand(Robot robot, String command, Rectangle screenRect, AudioManager audioManager, UplinkManager uplinkManager) {
+    private static void handleControlCommand(Robot robot, String command, Rectangle screenRect, AudioManager audioManager, UplinkManager uplinkManager, Socket controlSocket, String hostId) {
         try {
             if (command == null) return;
             String[] parts = command.split(":");
@@ -209,6 +209,17 @@ public class HostClient extends Application {
                         String state = parts[1];
                         boolean enable = "ON".equalsIgnoreCase(state);
                         if (enable) uplinkManager.enable(); else uplinkManager.disable();
+                    }
+                    break;
+                case "CHAT":
+                    // Relay back to viewer as a host message
+                    String text = command.length() > 5 ? command.substring(5) : "";
+                    try {
+                        MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostId);
+                        reply.setMessage("CHAT:" + text);
+                        SocketMethodHelpers.sendMessage(controlSocket, reply);
+                    } catch (Exception e) {
+                        System.err.println("Failed to send chat reply: " + e.getMessage());
                     }
                     break;
             }

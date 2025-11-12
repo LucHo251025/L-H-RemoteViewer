@@ -25,6 +25,7 @@ public class ViewerClient extends Application {
     private ImageView remoteImageView;
     private Socket controlSocket;
     private MessageModel viewerControlModel;
+    private com.example.ultraviewdemo.UltraViewController uiController;
 
     // Audio
     private volatile Socket audioSocket;
@@ -128,8 +129,17 @@ public class ViewerClient extends Application {
 
         // Wire UI audio toggle to network control
         com.example.ultraviewdemo.UltraViewController ctrl = fxmlLoader.getController();
+        this.uiController = ctrl;
         if (ctrl != null) {
             ctrl.setOnAudioToggle(this::enableAudio);
+            ctrl.setOnChatSend(text -> {
+                // show immediately as local message
+                ctrl.addChatMessage("You", text);
+                if (viewerControlModel != null && controlSocket != null && controlSocket.isConnected()) {
+                    viewerControlModel.setMessage("CHAT:" + text);
+                    SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+                }
+            });
         }
 
         StackPane remoteContainer = (StackPane) scene.lookup("#remoteContainer");
@@ -211,6 +221,27 @@ public class ViewerClient extends Application {
                 SocketMethodHelpers.sendMessage(controlSocket, viewerControlModel);
 
                 System.out.println("Control connection established successfully!");
+
+                // Start background listener for chat messages from host
+                Thread reader = new Thread(() -> {
+                    try {
+                        while (!controlSocket.isClosed()) {
+                            MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
+                            if (incoming == null) break;
+                            String msg = incoming.getMessage();
+                            if (msg != null && msg.startsWith("CHAT:")) {
+                                String text = msg.length() > 5 ? msg.substring(5) : "";
+                                Platform.runLater(() -> {
+                                    if (uiController != null) uiController.addChatMessage("Host", text);
+                                });
+                            }
+                        }
+                    } catch (Exception e) {
+                        // reader ends on error or close
+                    }
+                }, "ViewerControlReader");
+                reader.setDaemon(true);
+                reader.start();
             } catch (Exception e) {
                 System.err.println("Failed to establish control connection: " + e.getMessage());
                 e.printStackTrace();

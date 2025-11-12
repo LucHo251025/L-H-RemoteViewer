@@ -5,6 +5,8 @@ import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ComboBox;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.image.ImageView;
@@ -79,6 +81,12 @@ public class UltraViewController implements Initializable {
     // Audio state for toggle button (default OFF for clarity/stability)
     private boolean isAudioOn = false;
     private Consumer<Boolean> onAudioToggle; // callback to Viewer to start/stop audio
+
+    // Chat UI
+    @FXML private ListView<String> chatListView;
+    @FXML private TextField chatInputField;
+    @FXML private Button sendChatBtn;
+    private Consumer<String> onChatSend;
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -87,6 +95,13 @@ public class UltraViewController implements Initializable {
         // Initialize audio button appearance
         if (audioButton != null) {
             applyAudioButtonState();
+        }
+        // Chat wiring
+        if (sendChatBtn != null) {
+            sendChatBtn.setOnAction(e -> sendChatInternal());
+        }
+        if (chatInputField != null) {
+            chatInputField.setOnAction(e -> sendChatInternal()); // Enter to send
         }
         if (qualityCombo != null) {
             if (qualityCombo.getItems() != null && !qualityCombo.getItems().isEmpty()) {
@@ -233,6 +248,27 @@ public class UltraViewController implements Initializable {
 
     public void setOnAudioToggle(Consumer<Boolean> handler) {
         this.onAudioToggle = handler;
+    }
+
+    public void setOnChatSend(Consumer<String> handler) {
+        this.onChatSend = handler;
+    }
+
+    public void addChatMessage(String sender, String text) {
+        if (chatListView != null) {
+            chatListView.getItems().add((sender != null ? sender + ": " : "") + text);
+            chatListView.scrollTo(chatListView.getItems().size() - 1);
+        }
+    }
+
+    private void sendChatInternal() {
+        if (chatInputField == null) return;
+        String msg = chatInputField.getText();
+        if (msg == null) return;
+        msg = msg.trim();
+        if (msg.isEmpty()) return;
+        if (onChatSend != null) onChatSend.accept(msg);
+        chatInputField.clear();
     }
 
     private void applyAudioButtonState() {
