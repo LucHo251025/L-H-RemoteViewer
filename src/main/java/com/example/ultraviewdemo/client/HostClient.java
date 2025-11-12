@@ -354,7 +354,8 @@ public class HostClient extends Application {
             if (playThread != null && playThread.isAlive()) return;
             if (client == null || client.isClosed()) return;
             playThread = new Thread(() -> {
-                AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
+                // Match Viewer uplink format (44.1kHz, mono, 16-bit, LE)
+                AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
                 try (InputStream in = client.getInputStream()) {
                     DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
                     if (!AudioSystem.isLineSupported(info)) {
@@ -364,7 +365,8 @@ public class HostClient extends Application {
                     speakerLine = (SourceDataLine) AudioSystem.getLine(info);
                     speakerLine.open(fmt);
                     speakerLine.start();
-                    byte[] buf = new byte[1600];
+                    // Buffer ~50ms @ 44.1kHz mono 16-bit ≈ 4410 bytes
+                    byte[] buf = new byte[4410];
                     int n;
                     while (shouldRun.get() && enabled.get() && !client.isClosed() && (n = in.read(buf)) != -1) {
                         if (n > 0) {
