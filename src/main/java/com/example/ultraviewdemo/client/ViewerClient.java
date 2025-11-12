@@ -363,7 +363,7 @@ public class ViewerClient extends Application {
         } catch (Exception ignored) {}
     }
 
-    private static void writeWavPcm16Le(File file, byte[] pcm, int sampleRate, int channels) throws IOException {
+    public static void writeWavPcm16Le(File file, byte[] pcm, int sampleRate, int channels) throws IOException {
         int byteRate = sampleRate * channels * 2;
         int dataLen = pcm.length;
         int chunkSize = 36 + dataLen;
@@ -397,7 +397,7 @@ public class ViewerClient extends Application {
         line.close();
     }
 
-    private static File getAudioSaveFile(String base) {
+    public static File getAudioSaveFile(String base) {
         String dirProp = System.getProperty("ultraview.audio.dir");
         File dir = (dirProp != null && !dirProp.isEmpty()) ? new File(dirProp) : new File(System.getProperty("user.home") + File.separator + "UltraView" + File.separator + "audio");
         if (!dir.exists()) dir.mkdirs();

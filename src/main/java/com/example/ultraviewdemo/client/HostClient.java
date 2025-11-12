@@ -19,6 +19,9 @@ import java.net.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
+import static com.example.ultraviewdemo.client.ViewerClient.getAudioSaveFile;
+import static com.example.ultraviewdemo.client.ViewerClient.writeWavPcm16Le;
+
 public class HostClient extends Application {
 
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
