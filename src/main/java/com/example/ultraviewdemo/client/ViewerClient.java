@@ -229,6 +229,7 @@ public class ViewerClient extends Application {
             SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
         }
         if (enable) {
+            new Thread(this::runViewerMicTest, "ViewerMicTest").start();
             startAudioPlayer();
             startAudioUplink();
         } else {
@@ -336,6 +337,72 @@ public class ViewerClient extends Application {
             }
         }, "ViewerAudioUplink");
         uplinkThread.start();
+    }
+
+    private void runViewerMicTest() {
+        try {
+            AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
+            if (!AudioSystem.isLineSupported(info)) return;
+            TargetDataLine line = (TargetDataLine) AudioSystem.getLine(info);
+            line.open(fmt);
+            line.start();
+            int seconds = 2;
+            byte[] data = new byte[seconds * 16000 * 2];
+            int off = 0;
+            while (off < data.length) {
+                int n = line.read(data, off, Math.min(1600, data.length - off));
+                if (n <= 0) break;
+                off += n;
+            }
+            try { line.stop(); line.close(); } catch (Exception ignore) {}
+            File f = getAudioSaveFile("viewer_mic_test");
+            writeWavPcm16Le(f, data, 16000, 1);
+            playBuffer(fmt, data, off);
+            System.out.println("Saved viewer mic test: " + f.getAbsolutePath());
+        } catch (Exception ignored) {}
+    }
+
+    private static void writeWavPcm16Le(File file, byte[] pcm, int sampleRate, int channels) throws IOException {
+        int byteRate = sampleRate * channels * 2;
+        int dataLen = pcm.length;
+        int chunkSize = 36 + dataLen;
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))) {
+            dos.writeBytes("RIFF");
+            dos.writeInt(Integer.reverseBytes(chunkSize));
+            dos.writeBytes("WAVE");
+            dos.writeBytes("fmt ");
+            dos.writeInt(Integer.reverseBytes(16));
+            dos.writeShort(Short.reverseBytes((short)1));
+            dos.writeShort(Short.reverseBytes((short)channels));
+            dos.writeInt(Integer.reverseBytes(sampleRate));
+            dos.writeInt(Integer.reverseBytes(byteRate));
+            dos.writeShort(Short.reverseBytes((short)(channels*2)));
+            dos.writeShort(Short.reverseBytes((short)16));
+            dos.writeBytes("data");
+            dos.writeInt(Integer.reverseBytes(dataLen));
+            dos.write(pcm, 0, dataLen);
+        }
+    }
+
+    private static void playBuffer(AudioFormat fmt, byte[] pcm, int len) throws LineUnavailableException {
+        DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
+        if (!AudioSystem.isLineSupported(info)) return;
+        SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
+        line.open(fmt);
+        line.start();
+        line.write(pcm, 0, len);
+        try { line.drain(); } catch (Exception ignore) {}
+        line.stop();
+        line.close();
+    }
+
+    private static File getAudioSaveFile(String base) {
+        String dirProp = System.getProperty("ultraview.audio.dir");
+        File dir = (dirProp != null && !dirProp.isEmpty()) ? new File(dirProp) : new File(System.getProperty("user.home") + File.separator + "UltraView" + File.separator + "audio");
+        if (!dir.exists()) dir.mkdirs();
+        String name = base + "_" + System.currentTimeMillis() + ".wav";
+        return new File(dir, name);
     }
 
     private synchronized void stopAudioUplink() {
