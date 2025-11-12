@@ -13,6 +13,7 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.scene.input.MouseEvent;
+import javafx.geometry.Pos;
 import java.io.*;
 import java.net.*;
 
@@ -147,6 +148,11 @@ public class ViewerClient extends Application {
             remoteImageView.setImage(placeholder);
 
             System.out.println("ImageView created with size: " + remoteImageView.getFitWidth() + "x" + remoteImageView.getFitHeight());
+
+            // Bind to container to always fit available space and center the image
+            remoteImageView.fitWidthProperty().bind(remoteContainer.widthProperty());
+            remoteImageView.fitHeightProperty().bind(remoteContainer.heightProperty());
+            StackPane.setAlignment(remoteImageView, Pos.CENTER);
 
             remoteContainer.getChildren().add(remoteImageView);
 
