@@ -258,6 +258,16 @@ public class ViewerClient extends Application {
             } else {
                 System.out.println("Control writer is null!");
             }
+            event.consume();
+        });
+        
+        // Ensure focus on press and consume to avoid parent scroll/pan
+        imageView.setOnMousePressed(event -> {
+            imageView.requestFocus();
+            event.consume();
+        });
+        imageView.setOnMouseReleased(event -> {
+            event.consume();
         });
         
         // Mouse drag events
@@ -270,6 +280,7 @@ public class ViewerClient extends Application {
                 viewerControlModel.setMessage("MOUSE_DRAG:" + x + ":" + y);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
             }
+            event.consume();
         });
         
         // Mouse scroll events
@@ -283,7 +294,10 @@ public class ViewerClient extends Application {
                 viewerControlModel.setMessage("MOUSE_SCROLL:" + x + ":" + y + ":" + deltaY);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
             }
+            event.consume();
         });
+        imageView.setOnScrollStarted(event -> event.consume());
+        imageView.setOnScrollFinished(event -> event.consume());
         
         // Keyboard events
         imageView.setFocusTraversable(true);
