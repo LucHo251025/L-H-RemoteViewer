@@ -44,13 +44,25 @@
             </HBox>
 
             <!-- Chat Panel -->
-            <VBox spacing="8.0" style="-fx-padding: 0 0 8 0;">
-                <Label style="-fx-text-fill: #374151; -fx-font-size: 12px; -fx-font-weight: 600;" text="Chat" />
-                <ListView fx:id="chatListView" prefHeight="470.0" prefWidth="259.0" style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8;" />
-                <HBox spacing="8.0">
-                    <TextField fx:id="chatInputField" promptText="Type a message..." style="-fx-background-radius: 8; -fx-border-radius: 8;" HBox.hgrow="ALWAYS" />
-                    <Button fx:id="sendChatBtn" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-weight: 600;" text="Send" />
+            <VBox spacing="10.0" style="-fx-padding: 0 0 8 0;">
+                <!-- Card header -->
+                <HBox alignment="CENTER_LEFT" spacing="8.0">
+                    <Label text="💬" style="-fx-font-size: 14px;" />
+                    <Label text="Chat" style="-fx-text-fill: #111827; -fx-font-size: 13px; -fx-font-weight: 700;" />
+                    <Region HBox.hgrow="ALWAYS" />
                 </HBox>
+
+                <!-- Card body -->
+                <VBox spacing="10.0" style="-fx-background-color: #ffffff; -fx-background-radius: 12; -fx-padding: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 6, 0, 0, 1);">
+                    <ListView fx:id="chatListView" prefHeight="440.0" prefWidth="259.0"
+                              style="-fx-background-color: #fafafa; -fx-background-insets: 0; -fx-background-radius: 10; -fx-border-color: #e5e7eb; -fx-border-radius: 10;" />
+                    <HBox spacing="8.0" alignment="CENTER_LEFT">
+                        <TextField fx:id="chatInputField" promptText="Type a message..." HBox.hgrow="ALWAYS"
+                                   style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-padding: 8 10; -fx-text-inner-color: #111827;-fx-text-fill: #000000; -fx-prompt-text-fill: #9ca3af;" />
+                        <Button fx:id="sendChatBtn" text="Send"
+                                style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 10; -fx-font-weight: 700; -fx-padding: 8 14;" />
+                    </HBox>
+                </VBox>
             </VBox>
 
             <!-- Search & Filter -->

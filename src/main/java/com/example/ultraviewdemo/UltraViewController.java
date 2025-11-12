@@ -9,6 +9,13 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.geometry.Pos;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -79,6 +86,12 @@ public class UltraViewController implements Initializable {
     // Audio state for toggle button (default OFF for clarity/stability)
     private boolean isAudioOn = false;
     private Consumer<Boolean> onAudioToggle; // callback to Viewer to start/stop audio
+
+    // Chat UI
+    @FXML private ListView<ChatMessage> chatListView;
+    @FXML private TextField chatInputField;
+    @FXML private Button sendChatBtn;
+    private Consumer<String> onChatSend;
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -87,6 +100,47 @@ public class UltraViewController implements Initializable {
         // Initialize audio button appearance
         if (audioButton != null) {
             applyAudioButtonState();
+        }
+        // Chat wiring
+        if (sendChatBtn != null) {
+            sendChatBtn.setOnAction(e -> sendChatInternal());
+        }
+        if (chatInputField != null) {
+            chatInputField.setOnAction(e -> sendChatInternal()); // Enter to send
+        }
+        if (chatListView != null) {
+            chatListView.setCellFactory(lv -> new ListCell<>() {
+                @Override
+                protected void updateItem(ChatMessage item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setGraphic(null);
+                        setText(null);
+                        return;
+                    }
+                    Label bubble = new Label(item.text);
+                    bubble.setWrapText(true);
+                    bubble.setMaxWidth(180);
+                    bubble.setStyle(item.self
+                            ? "-fx-background-color: #DCFCE7; -fx-text-fill: #065F46; -fx-padding: 8 10; -fx-background-radius: 12;"
+                            : "-fx-background-color: #E5E7EB; -fx-text-fill: #111827; -fx-padding: 8 10; -fx-background-radius: 12;");
+                    Label name = new Label(item.self ? "You" : (item.sender != null ? item.sender : "Peer"));
+                    name.setStyle("-fx-font-size: 10px; -fx-text-fill: #6B7280;");
+                    VBox msgBox = new VBox(4, name, bubble);
+                    HBox row = new HBox();
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+                    if (item.self) {
+                        row.getChildren().addAll(spacer, msgBox);
+                        row.setAlignment(Pos.CENTER_RIGHT);
+                    } else {
+                        row.getChildren().addAll(msgBox, spacer);
+                        row.setAlignment(Pos.CENTER_LEFT);
+                    }
+                    setGraphic(row);
+                    setText(null);
+                }
+            });
         }
         if (qualityCombo != null) {
             if (qualityCombo.getItems() != null && !qualityCombo.getItems().isEmpty()) {
@@ -235,6 +289,28 @@ public class UltraViewController implements Initializable {
         this.onAudioToggle = handler;
     }
 
+    public void setOnChatSend(Consumer<String> handler) {
+        this.onChatSend = handler;
+    }
+
+    public void addChatMessage(String sender, String text) {
+        if (chatListView != null) {
+            boolean self = "You".equalsIgnoreCase(sender);
+            chatListView.getItems().add(new ChatMessage(self, sender, text));
+            chatListView.scrollTo(chatListView.getItems().size() - 1);
+        }
+    }
+
+    private void sendChatInternal() {
+        if (chatInputField == null) return;
+        String msg = chatInputField.getText();
+        if (msg == null) return;
+        msg = msg.trim();
+        if (msg.isEmpty()) return;
+        if (onChatSend != null) onChatSend.accept(msg);
+        chatInputField.clear();
+    }
+
     private void applyAudioButtonState() {
         if (audioButton == null) return;
         if (isAudioOn) {
@@ -254,5 +330,16 @@ public class UltraViewController implements Initializable {
     private void expandSidebar() {
         if (rootPane == null || leftPane == null || leftCollapsed == null) return;
         rootPane.setLeft(leftPane);
+    }
+
+    private static class ChatMessage {
+        final boolean self;
+        final String sender;
+        final String text;
+        ChatMessage(boolean self, String sender, String text) {
+            this.self = self;
+            this.sender = sender;
+            this.text = text;
+        }
     }
 }
