@@ -141,10 +141,13 @@ public class HostClient extends Application {
                         int screenY = (int) y;
                         
                         robot.mouseMove(screenX, screenY);
-                        int wheelAmount = (int) Math.round(deltaY / 40.0);
+                        // Use a smaller divisor so each scroll gesture has more impact
+                        int wheelAmount = (int) Math.round(deltaY / 20.0);
                         if (wheelAmount == 0 && deltaY != 0) {
                             wheelAmount = deltaY > 0 ? 1 : -1;
                         }
+                        // Invert direction so viewer scroll up corresponds to host scroll up
+                        wheelAmount = -wheelAmount;
                         System.out.println("MOUSE_SCROLL at (" + screenX + ", " + screenY + ") deltaY=" + deltaY + " wheel=" + wheelAmount);
                         robot.mouseWheel(wheelAmount); // Scale scroll amount
                     }
