@@ -4,6 +4,7 @@ import com.example.ultraviewdemo.helpers.Constant;
 import com.example.ultraviewdemo.helpers.SocketMethodHelpers;
 import com.example.ultraviewdemo.models.MessageModel;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
@@ -23,6 +24,11 @@ import static com.example.ultraviewdemo.client.ViewerClient.getAudioSaveFile;
 import static com.example.ultraviewdemo.client.ViewerClient.writeWavPcm16Le;
 
 public class HostClient extends Application {
+    // Chat/control references for Host UI integration
+    private static volatile Socket controlSocketRef;
+    private static final Object controlWriteLock = new Object();
+    private static volatile HostController hostControllerRef;
+    private static volatile String hostIdRef;
     private static volatile Socket currentControlSocket;
     private static volatile java.util.function.Consumer<String> chatSink;
 
@@ -38,7 +44,8 @@ public class HostClient extends Application {
     }
 
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
-        // Start local stream/control/audio servers on provided ports
+        hostIdRef = hostId;
+        // Start local stream/control servers on provided ports
         ServerSocket streamServer = createServerSocket(port);
         ServerSocket controlServer = createServerSocket(port + 1);
         ServerSocket audioServer = createServerSocket(port + 2);
@@ -111,7 +118,7 @@ public class HostClient extends Application {
     private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun, AudioManager audioManager, UplinkManager uplinkManager) {
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
-                currentControlSocket = controlSocket;
+                controlSocketRef = controlSocket;
                 MessageModel hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
                 Robot robot = new Robot();
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
@@ -226,14 +233,39 @@ public class HostClient extends Application {
                     }
                     break;
                 case "CHAT":
+                    // Relay back to viewer as a host message
                     String text = command.length() > 5 ? command.substring(5) : "";
-                    java.util.function.Consumer<String> sink = chatSink;
-                    if (sink != null) sink.accept(text);
+                    // Show on Host UI
+                    if (hostControllerRef != null) {
+                        Platform.runLater(() -> hostControllerRef.addChatMessage("Viewer", text));
+                    }
+                    try {
+                        MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostId);
+                        reply.setMessage("CHAT:" + text);
+                        SocketMethodHelpers.sendMessage(controlSocket, reply);
+                    } catch (Exception e) {
+                        System.err.println("Failed to send chat reply: " + e.getMessage());
+                    }
                     break;
             }
         } catch (Exception e) {
             System.err.println("Error handling control command: " + e.getMessage());
         }
+    }
+
+    // Host UI binds controller for chat updates
+    public static void bindController(HostController ctrl) { hostControllerRef = ctrl; }
+
+    // Send chat from Host UI to Viewer via control socket
+    public static void sendChatFromUI(String text) {
+        try {
+            if (controlSocketRef == null || controlSocketRef.isClosed()) return;
+            MessageModel msg = new MessageModel(Constant.ACTION_HOST, hostIdRef != null ? hostIdRef : "host");
+            msg.setMessage("CHAT:" + text);
+            synchronized (controlWriteLock) {
+                SocketMethodHelpers.sendMessageNoTrack(controlSocketRef, msg);
+            }
+        } catch (Exception ignore) {}
     }
 
     // Manages accepting an audio client and streaming microphone PCM when enabled (Host -> Viewer)
@@ -452,6 +484,11 @@ public class HostClient extends Application {
         // scene.getStylesheets().add(cssPath);
         stage.setTitle("UltraView Remote - Host");
         stage.setScene(scene);
+        // Bind controller for chat updates
+        try {
+            HostController ctrl = loader.getController();
+            if (ctrl != null) bindController(ctrl);
+        } catch (Exception ignore) {}
         stage.show();
     }
 
