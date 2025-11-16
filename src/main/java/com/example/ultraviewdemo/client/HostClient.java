@@ -23,6 +23,19 @@ import static com.example.ultraviewdemo.client.ViewerClient.getAudioSaveFile;
 import static com.example.ultraviewdemo.client.ViewerClient.writeWavPcm16Le;
 
 public class HostClient extends Application {
+    private static volatile Socket currentControlSocket;
+    private static volatile java.util.function.Consumer<String> chatSink;
+
+    public static void setChatSink(java.util.function.Consumer<String> sink) { chatSink = sink; }
+    public static void sendHostChat(String text, String hostId) {
+        try {
+            Socket s = currentControlSocket;
+            if (s == null || s.isClosed()) return;
+            MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostId);
+            reply.setMessage("CHAT:" + text);
+            SocketMethodHelpers.sendMessage(s, reply);
+        } catch (Exception ignored) {}
+    }
 
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
         // Start local stream/control/audio servers on provided ports
@@ -98,6 +111,7 @@ public class HostClient extends Application {
     private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun, AudioManager audioManager, UplinkManager uplinkManager) {
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
+                currentControlSocket = controlSocket;
                 MessageModel hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
                 Robot robot = new Robot();
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
@@ -108,7 +122,7 @@ public class HostClient extends Application {
                 }
             } catch (Exception e) {
                 System.err.println("Control connection error: " + e.getMessage());
-            }
+            } finally { currentControlSocket = null; }
         }, "HostControlAccept").start();
     }
 
@@ -212,15 +226,9 @@ public class HostClient extends Application {
                     }
                     break;
                 case "CHAT":
-                    // Relay back to viewer as a host message
                     String text = command.length() > 5 ? command.substring(5) : "";
-                    try {
-                        MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostId);
-                        reply.setMessage("CHAT:" + text);
-                        SocketMethodHelpers.sendMessage(controlSocket, reply);
-                    } catch (Exception e) {
-                        System.err.println("Failed to send chat reply: " + e.getMessage());
-                    }
+                    java.util.function.Consumer<String> sink = chatSink;
+                    if (sink != null) sink.accept(text);
                     break;
             }
         } catch (Exception e) {
