@@ -235,10 +235,12 @@ public class HostClient extends Application {
                 case "CHAT":
                     // Relay back to viewer as a host message
                     String text = command.length() > 5 ? command.substring(5) : "";
-                    // Show on Host UI
-                    if (hostControllerRef != null) {
-                        Platform.runLater(() -> hostControllerRef.addChatMessage("Viewer", text));
-                    }
+                    // Show in independent Host chat window
+                    Platform.runLater(() -> {
+                        HostChatWindow.initIfNeeded();
+                        HostChatWindow.show();
+                        HostChatWindow.addMessage("Viewer", text);
+                    });
                     try {
                         MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostId);
                         reply.setMessage("CHAT:" + text);
@@ -489,6 +491,12 @@ public class HostClient extends Application {
             HostController ctrl = loader.getController();
             if (ctrl != null) bindController(ctrl);
         } catch (Exception ignore) {}
+        // Initialize independent Host chat window and wire send handler
+        Platform.runLater(() -> {
+            HostChatWindow.initIfNeeded();
+            HostChatWindow.setOnSend(HostClient::sendChatFromUI);
+            HostChatWindow.show();
+        });
         stage.show();
     }
 
