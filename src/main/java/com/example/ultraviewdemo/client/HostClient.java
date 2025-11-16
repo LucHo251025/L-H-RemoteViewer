@@ -238,21 +238,14 @@ public class HostClient extends Application {
                     }
                     break;
                 case "CHAT":
-                    // Relay back to viewer as a host message
+                    // Receive viewer chat and show it on Host chat window only.
+                    // Do NOT echo back automatically to avoid duplicates on Viewer side.
                     String text = command.length() > 5 ? command.substring(5) : "";
-                    // Show in independent Host chat window
                     Platform.runLater(() -> {
                         HostChatWindow.initIfNeeded();
                         HostChatWindow.show();
                         HostChatWindow.addMessage("Viewer", text);
                     });
-                    try {
-                        MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostId);
-                        reply.setMessage("CHAT:" + text);
-                        SocketMethodHelpers.sendMessage(controlSocket, reply);
-                    } catch (Exception e) {
-                        System.err.println("Failed to send chat reply: " + e.getMessage());
-                    }
                     break;
             }
         } catch (Exception e) {
