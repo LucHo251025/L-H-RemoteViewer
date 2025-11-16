@@ -52,6 +52,7 @@
 			<HBox alignment="CENTER" spacing="12.0">
 				<Button fx:id="stopBtn" disable="true" text="Stop" />
 				<Button fx:id="startBtn" styleClass="connect-button" text="Start Sharing" />
+				<Button fx:id="openChatBtn" text="Chat" />
 			</HBox>
 			<Label fx:id="statusLabel" text="Idle" />
 		</VBox>

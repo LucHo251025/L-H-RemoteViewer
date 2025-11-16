@@ -20,9 +20,14 @@ public class HostController {
 	@FXML private Button startBtn;
 	@FXML private Button stopBtn;
 	@FXML private Label statusLabel;
+	@FXML private Button openChatBtn;
 
 	private Thread sharingThread;
 	private volatile boolean running = false;
+
+	private javafx.stage.Stage chatStage;
+	private ListView<String> chatList;
+	private TextField chatInput;
 
 	public void initialize() {
 		passwordField.setText(generatePassword());
@@ -34,6 +39,9 @@ public class HostController {
 		regenerateBtn.setOnAction(e -> passwordField.setText(generatePassword()));
 		startBtn.setOnAction(e -> startSharing());
 		stopBtn.setOnAction(e -> stopSharing());
+
+		if (openChatBtn != null) openChatBtn.setOnAction(e -> toggleChat());
+		HostClient.setChatSink(text -> Platform.runLater(() -> appendChat("Viewer", text)));
 	}
 
 	private void startSharing() {
@@ -66,6 +74,43 @@ public class HostController {
 	}
 
 	private void stopSharing() { running = false; }
+
+	private void toggleChat() {
+		if (chatStage == null) createChatWindow();
+		if (chatStage.isShowing()) chatStage.hide(); else chatStage.show();
+	}
+
+	private void createChatWindow() {
+		chatList = new ListView<>();
+		chatInput = new TextField();
+		Button sendBtn = new Button("Send");
+		sendBtn.setOnAction(e -> sendChat());
+		chatInput.setOnAction(e -> sendChat());
+		javafx.scene.layout.HBox inputRow = new javafx.scene.layout.HBox(8, chatInput, sendBtn);
+		javafx.scene.layout.VBox root = new javafx.scene.layout.VBox(8, chatList, inputRow);
+		root.setPrefSize(320, 260);
+		javafx.scene.Scene scene = new javafx.scene.Scene(root);
+		chatStage = new javafx.stage.Stage();
+		chatStage.setTitle("Host Chat");
+		chatStage.setScene(scene);
+	}
+
+	private void appendChat(String who, String text) {
+		if (chatList == null) return;
+		chatList.getItems().add(("You".equals(who) ? "You: " : who + ": ") + text);
+		chatList.scrollTo(chatList.getItems().size() - 1);
+	}
+
+	private void sendChat() {
+		if (chatInput == null) return;
+		String msg = chatInput.getText();
+		if (msg == null) return;
+		msg = msg.trim();
+		if (msg.isEmpty()) return;
+		HostClient.sendHostChat(msg, hostIdField != null ? hostIdField.getText() : "");
+		appendChat("You", msg);
+		chatInput.clear();
+	}
 
 	private static String listLocalIPv4() {
 		StringBuilder sb = new StringBuilder();

@@ -26,6 +26,7 @@ public class ViewerClient extends Application {
     private Socket controlSocket;
     private MessageModel viewerControlModel;
     private com.example.ultraviewdemo.UltraViewController uiController;
+    private final Object controlWriteLock = new Object();
 
     // Audio
     private volatile Socket audioSocket;
@@ -163,12 +164,8 @@ public class ViewerClient extends Application {
         if (ctrl != null) {
             ctrl.setOnAudioToggle(this::enableAudio);
             ctrl.setOnChatSend(text -> {
-                // show immediately as local message
                 ctrl.addChatMessage("You", text);
-                if (viewerControlModel != null && controlSocket != null && controlSocket.isConnected()) {
-                    viewerControlModel.setMessage("CHAT:" + text);
-                    SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
-                }
+                sendControl("CHAT:" + text);
             });
         }
 
@@ -279,16 +276,22 @@ public class ViewerClient extends Application {
         }, "ViewerControlConnect").start();
     }
 
+    private void sendControl(String message) {
+        try {
+            if (viewerControlModel == null || controlSocket == null || !controlSocket.isConnected()) return;
+            synchronized (controlWriteLock) {
+                viewerControlModel.setMessage(message);
+                SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+            }
+        } catch (Exception ignore) {}
+    }
+
     // Audio control called from UI
     private synchronized void enableAudio(boolean enable) {
         if (enable == audioEnabled) return;
         audioEnabled = enable;
-        if (viewerControlModel != null && controlSocket != null && controlSocket.isConnected()) {
-            viewerControlModel.setMessage("AUDIO:" + (enable ? "ON" : "OFF"));
-            SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
-            viewerControlModel.setMessage("AUDIO_UP:" + (enable ? "ON" : "OFF"));
-            SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
-        }
+        sendControl("AUDIO:" + (enable ? "ON" : "OFF"));
+        sendControl("AUDIO_UP:" + (enable ? "ON" : "OFF"));
         if (enable) {
             startAudioPlayer();
             startAudioUplink();
@@ -488,8 +491,7 @@ public class ViewerClient extends Application {
                 double x = event.getX();
                 double y = event.getY();
                 String button = event.getButton().toString();
-                viewerControlModel.setMessage("MOUSE_CLICK:" + x + ":" + y + ":" + button);
-                SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+                sendControl("MOUSE_CLICK:" + x + ":" + y + ":" + button);
                 System.out.println("Sent control command: MOUSE_CLICK:" + x + ":" + y + ":" + button);
             } else {
                 System.out.println("Control writer is null!");
@@ -502,8 +504,7 @@ public class ViewerClient extends Application {
             if (viewerControlModel != null) {
                 double x = event.getX();
                 double y = event.getY();
-                viewerControlModel.setMessage("MOUSE_DRAG:" + x + ":" + y);
-                SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+                sendControl("MOUSE_DRAG:" + x + ":" + y);
             }
         });
         
@@ -514,8 +515,7 @@ public class ViewerClient extends Application {
                 double x = event.getX();
                 double y = event.getY();
                 double deltaY = event.getDeltaY();
-                viewerControlModel.setMessage("MOUSE_SCROLL:" + x + ":" + y + ":" + deltaY);
-                SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+                sendControl("MOUSE_SCROLL:" + x + ":" + y + ":" + deltaY);
             }
         });
         
@@ -525,8 +525,7 @@ public class ViewerClient extends Application {
             System.out.println("Key pressed: " + event.getCode());
             if (viewerControlModel != null) {
                 String keyCode = event.getCode().toString();
-                viewerControlModel.setMessage("KEY_PRESSED:" + keyCode);
-                SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+                sendControl("KEY_PRESSED:" + keyCode);
             }
         });
         
@@ -534,16 +533,14 @@ public class ViewerClient extends Application {
             System.out.println("Key released: " + event.getCode());
             if (viewerControlModel != null) {
                 String keyCode = event.getCode().toString();
-                viewerControlModel.setMessage("KEY_RELEASED:" + keyCode);
-                SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+                sendControl("KEY_RELEASED:" + keyCode);
             }
         });
         
         imageView.setOnKeyTyped(event -> {
             if (viewerControlModel != null) {
                 String character = event.getCharacter();
-                viewerControlModel.setMessage("KEY_TYPED:" + character);
-                SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+                sendControl("KEY_TYPED:" + character);
             }
         });
     }
