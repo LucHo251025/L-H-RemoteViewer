@@ -33,6 +33,7 @@ public class HostClient extends Application {
     private static volatile java.util.function.Consumer<String> chatSink;
 
     public static void setChatSink(java.util.function.Consumer<String> sink) { chatSink = sink; }
+    
     public static void sendHostChat(String text, String hostId) {
         try {
             Socket s = currentControlSocket;
@@ -236,10 +237,16 @@ public class HostClient extends Application {
                     // Receive viewer chat and show it on Host chat window only.
                     // Do NOT echo back automatically to avoid duplicates on Viewer side.
                     String text = command.length() > 5 ? command.substring(5) : "";
+                    System.out.println("Received chat from viewer: " + text);
                     Platform.runLater(() -> {
-                        HostChatWindow.initIfNeeded();
-                        HostChatWindow.show();
-                        HostChatWindow.addMessage("Viewer", text);
+                        try {
+                            HostChatWindow.initIfNeeded();
+                            HostChatWindow.show();
+                            HostChatWindow.addMessage("Viewer", text);
+                        } catch (Exception e) {
+                            System.err.println("Error showing chat message: " + e.getMessage());
+                            e.printStackTrace();
+                        }
                     });
                     break;
             }
@@ -254,13 +261,40 @@ public class HostClient extends Application {
     // Send chat from Host UI to Viewer via control socket
     public static void sendChatFromUI(String text) {
         try {
-            if (controlSocketRef == null || controlSocketRef.isClosed()) return;
+            if (controlSocketRef == null) {
+                System.err.println("Cannot send chat: controlSocketRef is null");
+                return;
+            }
+            if (controlSocketRef.isClosed()) {
+                System.err.println("Cannot send chat: controlSocketRef is closed");
+                return;
+            }
+            
+            System.out.println("Sending chat message: " + text);
+            
             MessageModel msg = new MessageModel(Constant.ACTION_HOST, hostIdRef != null ? hostIdRef : "host");
             msg.setMessage("CHAT:" + text);
+            
             synchronized (controlWriteLock) {
                 SocketMethodHelpers.sendMessageNoTrack(controlSocketRef, msg);
+                System.out.println("Chat message sent successfully");
             }
-        } catch (Exception ignore) {}
+            
+            // Update UI immediately
+            Platform.runLater(() -> {
+                HostChatWindow.initIfNeeded();
+                HostChatWindow.show();
+                HostChatWindow.addMessage("Host", text);
+            });
+        } catch (Exception e) {
+            System.err.println("Error sending chat message: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Expose connection state so HostController can show a friendly message instead of failing silently
+    public static boolean isControlConnected() {
+        return controlSocketRef != null && !controlSocketRef.isClosed();
     }
 
     // Manages accepting an audio client and streaming microphone PCM when enabled (Host -> Viewer)
