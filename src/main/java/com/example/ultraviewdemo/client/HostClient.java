@@ -7,6 +7,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 
 import javax.imageio.ImageIO;
@@ -268,26 +269,37 @@ public class HostClient extends Application {
     // Host UI binds controller for chat updates
     public static void bindController(HostController ctrl) { hostControllerRef = ctrl; }
 
+    private static void showChatError(String message) {
+        System.err.println(message);
+        Platform.runLater(() -> {
+            try {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setTitle("Chat");
+                alert.setHeaderText(null);
+                alert.setContentText(message);
+                alert.showAndWait();
+            } catch (Exception ignored) {}
+        });
+    }
+
     // Send chat from Host UI to Viewer via control socket
     public static void sendChatFromUI(String text) {
         try {
-            if (controlSocketRef == null) {
-                System.err.println("Cannot send chat: controlSocketRef is null");
+            if (hostIdRef == null || hostIdRef.isEmpty()) {
+                showChatError("Không gửi được chat: hostId bị rỗng hoặc null.");
                 return;
             }
-            if (controlSocketRef.isClosed()) {
-                System.err.println("Cannot send chat: controlSocketRef is closed");
+
+            if (currentControlSocket == null || currentControlSocket.isClosed()) {
+                showChatError("Không gửi được chat: chưa có Viewer kết nối hoặc kết nối điều khiển đã mất.");
                 return;
             }
-            
-            System.out.println("Sending chat message: " + text);
-            
-            MessageModel msg = new MessageModel(Constant.ACTION_HOST, hostIdRef != null ? hostIdRef : "host");
-            msg.setMessage("CHAT:" + text);
-            
+
+            System.out.println("Sending chat message from host to viewer: " + text);
+
             synchronized (controlWriteLock) {
-                SocketMethodHelpers.sendMessageNoTrack(controlSocketRef, msg);
-                System.out.println("Chat message sent successfully");
+                sendHostChat(text, hostIdRef);
+                System.out.println("Chat message sent to viewer over control socket");
             }
             
             // Update UI immediately
@@ -297,7 +309,7 @@ public class HostClient extends Application {
                 HostChatWindow.addMessage("Host", text);
             });
         } catch (Exception e) {
-            System.err.println("Error sending chat message: " + e.getMessage());
+            showChatError("Lỗi gửi chat: " + e.getMessage());
             e.printStackTrace();
         }
     }
