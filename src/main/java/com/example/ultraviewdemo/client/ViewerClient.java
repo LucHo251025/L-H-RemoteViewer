@@ -1,23 +1,23 @@
-package com.example.ultraviewdemo.client;
+    package com.example.ultraviewdemo.client;
 
-import com.example.ultraviewdemo.helpers.Constant;
-import com.example.ultraviewdemo.helpers.SocketMethodHelpers;
-import com.example.ultraviewdemo.models.MessageModel;
-import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.image.*;
-import javafx.scene.image.WritableImage;
-import javafx.scene.layout.*;
-import javafx.stage.Stage;
+    import com.example.ultraviewdemo.helpers.Constant;
+    import com.example.ultraviewdemo.helpers.SocketMethodHelpers;
+    import com.example.ultraviewdemo.models.MessageModel;
+    import javafx.application.Application;
+    import javafx.application.Platform;
+    import javafx.fxml.FXMLLoader;
+    import javafx.scene.Scene;
+    import javafx.scene.control.Alert;
+    import javafx.scene.image.*;
+    import javafx.scene.image.WritableImage;
+    import javafx.scene.layout.*;
+    import javafx.stage.Stage;
 
-import javax.sound.sampled.*;
-import java.io.*;
-import java.net.*;
+    import javax.sound.sampled.*;
+    import java.io.*;
+    import java.net.*;
 
-public class ViewerClient extends Application {
+    public class ViewerClient extends Application {
     private String serverHost = "localhost";
     private int serverPort = 5000; // unused in P2P; kept for compatibility
     private String hostId = "";
@@ -59,37 +59,7 @@ public class ViewerClient extends Application {
             this.hostId = params.hostId;
             this.password = params.password;
 
-            // If hostId is in the form host:port, connect directly without DirectoryServer
-            boolean direct = false;
-            try {
-                int idx = hostId.lastIndexOf(":");
-                if (idx > 0 && idx < hostId.length() - 1) {
-                    String h = hostId.substring(0, idx);
-                    String p = hostId.substring(idx + 1);
-                    int stream = Integer.parseInt(p);
-                    if (stream > 0 && stream <= 65535) {
-                        hostIp = h;
-                        hostStreamPort = stream;
-                        hostControlPort = stream + 1;
-                        direct = true;
-                    }
-                }
-            } catch (Exception ignore) {}
-
-            if (direct) {
-                Platform.runLater(() -> {
-                    try {
-                        openControlWindow();
-                        startNetworkConnection();
-                        startControlConnection();
-                    } catch (IOException e) {
-                        showError("Failed to load control UI: " + e.getMessage());
-                    }
-                });
-                return;
-            }
-
-            // Otherwise, query directory server for host endpoints, then connect directly
+                // Query directory server for host endpoints, then connect directly
             new Thread(() -> {
                 try (Socket dir = new Socket(serverHost, 7000)) {
                     MessageModel q = new MessageModel(Constant.ACTION_VIEWER_QUERY, "viewer");
@@ -572,4 +542,4 @@ public class ViewerClient extends Application {
     public static void main(String[] args) {
         launch();
     }
-}
+    }
