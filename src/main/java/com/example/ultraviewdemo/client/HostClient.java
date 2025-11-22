@@ -122,14 +122,39 @@ public class HostClient extends Application {
             try (Socket controlSocket = controlServer.accept()) {
                 controlSocketRef = controlSocket;
                 currentControlSocket = controlSocket;
-                MessageModel hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
-                Robot robot = new Robot();
-                Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 
-                while (shouldRun.getAsBoolean() && hostControlModel != null) {
-                    handleControlCommand(robot, hostControlModel.getMessage(), screenRect, audioManager, uplinkManager, controlSocket, hostId);
-                    hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
+                // ===== THÊM PHẦN NÀY: Thread để nhận tin nhắn từ Viewer =====
+                Thread readerThread = new Thread(() -> {
+                    try {
+                        while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
+                            try {
+                                MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
+                                if (incoming == null) break;
+
+                                String msg = incoming.getMessage();
+                                System.out.println("Host received message: " + msg); // Debug log
+
+                                if (msg != null) {
+                                    handleControlCommand(null, msg, null, audioManager, uplinkManager, controlSocket, hostId);
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Error reading control message: " + e.getMessage());
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Control reader thread error: " + e.getMessage());
+                    }
+                }, "HostControlReader");
+                readerThread.setDaemon(true);
+                readerThread.start();
+                // ===== KẾT THÚC PHẦN THÊM =====
+
+                // Giữ thread này alive để maintain connection
+                while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
+                    Thread.sleep(100);
                 }
+
             } catch (Exception e) {
                 System.err.println("Control connection error: " + e.getMessage());
                 e.printStackTrace();
