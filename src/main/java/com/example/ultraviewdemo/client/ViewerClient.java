@@ -135,13 +135,15 @@ public class ViewerClient extends Application {
             ctrl.setOnAudioToggle(this::enableAudio);
             // Gửi tin nhắn từ viewer tới host
             ctrl.setOnChatSend(text -> {
-                if (text != null && !text.trim().isEmpty() && controlSocket != null && !controlSocket.isClosed()) {
-                    sendControl("CHAT:" + text);
-                    // Hiển thị tin nhắn của chính mình
-                    Platform.runLater(() -> ctrl.addChatMessage("You", text));
+                String trimmed = (text == null) ? "" : text.trim();
+                if (trimmed.isEmpty()) return;
+                if (controlSocket == null || controlSocket.isClosed()) {
+                    System.err.println("Cannot send viewer chat: controlSocket is null or closed");
+                    return;
                 }
-                ctrl.addChatMessage("You", text);
-                sendControl("CHAT:" + text);
+                sendControl("CHAT:" + trimmed);
+                // Hiển thị tin nhắn của chính mình một lần
+                Platform.runLater(() -> ctrl.addChatMessage("You", trimmed));
             });
         }
 
