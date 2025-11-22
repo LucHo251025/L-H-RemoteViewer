@@ -133,7 +133,13 @@ public class ViewerClient extends Application {
         this.uiController = ctrl;
         if (ctrl != null) {
             ctrl.setOnAudioToggle(this::enableAudio);
+            // Gửi tin nhắn từ viewer tới host
             ctrl.setOnChatSend(text -> {
+                if (text != null && !text.trim().isEmpty() && controlSocket != null && !controlSocket.isClosed()) {
+                    sendControl("CHAT:" + text);
+                    // Hiển thị tin nhắn của chính mình
+                    Platform.runLater(() -> ctrl.addChatMessage("You", text));
+                }
                 ctrl.addChatMessage("You", text);
                 sendControl("CHAT:" + text);
             });
@@ -223,14 +229,30 @@ public class ViewerClient extends Application {
                 Thread reader = new Thread(() -> {
                     try {
                         while (!controlSocket.isClosed()) {
-                            MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
-                            if (incoming == null) break;
-                            String msg = incoming.getMessage();
-                            if (msg != null && msg.startsWith("CHAT:")) {
-                                String text = msg.length() > 5 ? msg.substring(5) : "";
-                                Platform.runLater(() -> {
-                                    if (uiController != null) uiController.addChatMessage("Host", text);
-                                });
+                            try {
+                                MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
+                                if (incoming == null) break;
+                                String msg = incoming.getMessage();
+                                System.out.println("Received message: " + msg); // Debug log
+                                if (msg != null) {
+                                    if (msg.startsWith("CHAT:")) {
+                                        String text = msg.length() > 5 ? msg.substring(5) : "";
+                                        System.out.println("Processing chat message: " + text); // Debug log
+                                        Platform.runLater(() -> {
+                                            if (uiController != null) {
+                                                uiController.addChatMessage("Host", text);
+                                            } else {
+                                                System.err.println("uiController is null when trying to display chat message");
+                                            }
+                                        });
+                                    } else if (msg.startsWith("AUDIO:") || msg.startsWith("AUDIO_UP:")) {
+                                        // Xử lý các lệnh âm thanh khác nếu cần
+                                    }
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Error in control message reader: " + e.getMessage());
+                                e.printStackTrace();
+                                break; // Thoát vòng lặp nếu có lỗi
                             }
                         }
                     } catch (Exception e) {
