@@ -38,11 +38,19 @@ public class HostClient extends Application {
     public static void sendHostChat(String text, String hostId) {
         try {
             Socket s = currentControlSocket;
-            if (s == null || s.isClosed()) return;
+            if (s == null || s.isClosed()) {
+                System.err.println("sendHostChat: currentControlSocket is null or closed");
+                return;
+            }
             MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostId);
             reply.setMessage("CHAT:" + text);
+            System.out.println("sendHostChat: sending to viewer, hostId=" + hostId + ", text=" + text);
             SocketMethodHelpers.sendMessage(s, reply);
-        } catch (Exception ignored) {}
+            System.out.println("sendHostChat: message sent");
+        } catch (Exception ex) {
+            System.err.println("Error in sendHostChat: " + ex.getMessage());
+            ex.printStackTrace();
+        }
     }
 
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
