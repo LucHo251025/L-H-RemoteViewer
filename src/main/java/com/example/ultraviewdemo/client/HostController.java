@@ -93,6 +93,15 @@ public class HostController {
         if (text == null) return;
         text = text.trim();
         if (text.isEmpty()) return;
+        // Only send if a viewer control connection exists
+        if (!HostClient.isControlConnected()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Chat");
+            alert.setHeaderText(null);
+            alert.setContentText("Chưa có Viewer kết nối hoặc kết nối đã mất. Không thể gửi chat.");
+            alert.showAndWait();
+            return;
+        }
         hostChatInput.clear();
         addChatMessage("Host", text);
         HostClient.sendChatFromUI(text);
