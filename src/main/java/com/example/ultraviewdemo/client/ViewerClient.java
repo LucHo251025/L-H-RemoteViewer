@@ -85,6 +85,9 @@ public class ViewerClient extends Application {
 
                     Platform.runLater(() -> {
                         try {
+                            // Hide the connect-host window once connection is successful
+                            stage.hide();
+
                             openControlWindow();
                             startNetworkConnection();
                             startControlConnection();
