@@ -120,6 +120,7 @@ public class HostClient extends Application {
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
                 controlSocketRef = controlSocket;
+                currentControlSocket = controlSocket;
                 MessageModel hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
                 // Authenticate viewer before handling control commands
                 if (hostControlModel == null || hostControlModel.getPartner_password() == null || !hostControlModel.getPartner_password().equals(password)) {
@@ -135,7 +136,11 @@ public class HostClient extends Application {
                 }
             } catch (Exception e) {
                 System.err.println("Control connection error: " + e.getMessage());
-            } finally { currentControlSocket = null; }
+                e.printStackTrace();
+            } finally {
+                currentControlSocket = null;
+                controlSocketRef = null;
+            }
         }, "HostControlAccept").start();
     }
 
