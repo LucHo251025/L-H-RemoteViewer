@@ -266,23 +266,21 @@ public class HostClient extends Application {
     // Send chat from Host UI to Viewer via control socket
     public static void sendChatFromUI(String text) {
         try {
-            if (controlSocketRef == null) {
-                System.err.println("Cannot send chat: controlSocketRef is null");
+            if (hostIdRef == null || hostIdRef.isEmpty()) {
+                System.err.println("Cannot send chat: hostIdRef is null/empty");
                 return;
             }
-            if (controlSocketRef.isClosed()) {
-                System.err.println("Cannot send chat: controlSocketRef is closed");
+
+            if (currentControlSocket == null || currentControlSocket.isClosed()) {
+                System.err.println("Cannot send chat: currentControlSocket is null or closed");
                 return;
             }
-            
-            System.out.println("Sending chat message: " + text);
-            
-            MessageModel msg = new MessageModel(Constant.ACTION_HOST, hostIdRef != null ? hostIdRef : "host");
-            msg.setMessage("CHAT:" + text);
-            
+
+            System.out.println("Sending chat message from host to viewer: " + text);
+
             synchronized (controlWriteLock) {
-                SocketMethodHelpers.sendMessageNoTrack(controlSocketRef, msg);
-                System.out.println("Chat message sent successfully");
+                sendHostChat(text, hostIdRef);
+                System.out.println("Chat message sent to viewer over control socket");
             }
             
             // Update UI immediately
