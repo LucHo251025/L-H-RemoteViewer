@@ -120,6 +120,7 @@ public class HostClient extends Application {
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
                 controlSocketRef = controlSocket;
+                currentControlSocket = controlSocket;
                 MessageModel hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
                 Robot robot = new Robot();
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
@@ -130,7 +131,11 @@ public class HostClient extends Application {
                 }
             } catch (Exception e) {
                 System.err.println("Control connection error: " + e.getMessage());
-            } finally { currentControlSocket = null; }
+                e.printStackTrace();
+            } finally {
+                currentControlSocket = null;
+                controlSocketRef = null;
+            }
         }, "HostControlAccept").start();
     }
 
