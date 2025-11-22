@@ -79,7 +79,7 @@
             <!-- Action Buttons -->
             <Button style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: #374151; -fx-padding: 6 12;" text="Security" />
             <Button style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: #374151; -fx-padding: 6 12;" text="Reconnect" />
-            <Button style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 6 12;" text="Disconnect" />
+            <Button fx:id="disconnectBtn" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 6 12;" text="Disconnect" />
          </HBox>
          
          <!-- Remote Desktop View -->

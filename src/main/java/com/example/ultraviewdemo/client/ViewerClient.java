@@ -172,6 +172,13 @@ public class ViewerClient extends Application {
         controlStage.setScene(scene);
         controlStage.setMinWidth(1000);
         controlStage.setMinHeight(700);
+
+        javafx.scene.control.Button disconnectBtn =
+                (javafx.scene.control.Button) scene.lookup("#disconnectBtn");
+        if (disconnectBtn != null) {
+            disconnectBtn.setOnAction(e -> controlStage.close());
+        }
+
         controlStage.show();
     }
 
