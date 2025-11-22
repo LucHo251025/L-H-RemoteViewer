@@ -33,8 +33,12 @@ public class ViewerClient extends Application {
     private int hostStreamPort;
     private int hostControlPort;
 
+    // Keep reference to the primary stage (connect-host window)
+    private Stage primaryStage;
+
     @Override
     public void start(Stage stage) throws Exception {
+        this.primaryStage = stage;
         FXMLLoader connectLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/connect-host.fxml"));
         Scene connectScene = new Scene(connectLoader.load(), 900, 650);
         String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
@@ -179,7 +183,12 @@ public class ViewerClient extends Application {
         javafx.scene.control.Button disconnectBtn =
                 (javafx.scene.control.Button) scene.lookup("#disconnectBtn");
         if (disconnectBtn != null) {
-            disconnectBtn.setOnAction(e -> controlStage.close());
+            disconnectBtn.setOnAction(e -> {
+                controlStage.close();
+                if (primaryStage != null) {
+                    primaryStage.show();
+                }
+            });
         }
 
         controlStage.show();
