@@ -16,6 +16,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.geometry.Pos;
+import javafx.stage.Stage;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -82,10 +83,15 @@ public class UltraViewController implements Initializable {
     private Button collapseSidebarBtn; // button inside leftPane header
     @FXML
     private Button openSidebarBtn; // button inside leftCollapsed
+    @FXML
+    private HBox bottomBar;
 
     // Audio state for toggle button (default OFF for clarity/stability)
     private boolean isAudioOn = false;
     private Consumer<Boolean> onAudioToggle; // callback to Viewer to start/stop audio
+
+    // Stage reference for fullscreen toggling
+    private Stage stage;
 
     // Chat UI
     @FXML private ListView<ChatMessage> chatListView;
@@ -228,7 +234,36 @@ public class UltraViewController implements Initializable {
 
     private void toggleFullscreen() {
         System.out.println("Toggling fullscreen...");
-        // Toggle fullscreen mode
+        // Always resolve Stage from the current Scene to avoid relying on external injection
+        javafx.stage.Window window = null;
+        if (fullscreenButton != null && fullscreenButton.getScene() != null) {
+            window = fullscreenButton.getScene().getWindow();
+        } else if (rootPane != null && rootPane.getScene() != null) {
+            window = rootPane.getScene().getWindow();
+        }
+
+        if (!(window instanceof javafx.stage.Stage)) {
+            System.err.println("[UltraViewController] Cannot resolve Stage for fullscreen toggle");
+            return;
+        }
+
+        javafx.stage.Stage localStage = (javafx.stage.Stage) window;
+        boolean newState = !localStage.isFullScreen();
+        localStage.setFullScreen(newState);
+
+        if (fullscreenButton != null) {
+            fullscreenButton.setText(newState ? "Exit Fullscreen" : "Fullscreen");
+        }
+
+        boolean showChrome = !newState;
+        if (leftPane != null) {
+            leftPane.setVisible(showChrome);
+            leftPane.setManaged(showChrome);
+        }
+        if (bottomBar != null) {
+            bottomBar.setVisible(showChrome);
+            bottomBar.setManaged(showChrome);
+        }
     }
 
     private void toggleAudio() {
@@ -287,6 +322,10 @@ public class UltraViewController implements Initializable {
 
     public void setOnAudioToggle(Consumer<Boolean> handler) {
         this.onAudioToggle = handler;
+    }
+
+    public void setStage(Stage stage) {
+        this.stage = stage;
     }
 
     public void setOnChatSend(Consumer<String> handler) {

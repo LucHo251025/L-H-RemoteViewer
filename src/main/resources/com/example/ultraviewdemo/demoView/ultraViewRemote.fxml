@@ -99,7 +99,7 @@
                 </ComboBox>
 
                 <!-- Display Controls -->
-                <Button style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-padding: 6 12;" text="Fullscreen" />
+                <Button fx:id="fullscreenButton" style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-padding: 6 12;" text="Fullscreen" />
 
                 <!-- Audio Controls -->
                 <Button fx:id="audioButton" style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-padding: 6 12; -fx-font-weight: 700;" text="🔊 Audio On" />
@@ -120,7 +120,7 @@
             </HBox>
 
             <!-- Remote Desktop View -->
-            <StackPane fx:id="remoteContainer" style="-fx-background-color: #eef2f7; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 0);">
+            <StackPane fx:id="remoteContainer" VBox.vgrow="ALWAYS" style="-fx-background-color: #eef2f7; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 0);">
                 <!-- Blue Desktop Background -->
                 <Rectangle height="600.0" style="-fx-fill: #ffffff; -fx-stroke: #e5e7eb; -fx-stroke-width: 1;" width="800.0" />
 
