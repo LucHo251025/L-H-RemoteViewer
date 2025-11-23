@@ -158,9 +158,13 @@ public class ViewerClient extends Application {
         // Show host UI with chat window
         Platform.runLater(() -> {
             try {
+                System.out.println("[Host] Initializing HostChatWindow...");
                 HostChatWindow.initIfNeeded();
+                System.out.println("[Host] Setting onSend callback...");
                 HostChatWindow.setOnSend(this::sendChatFromHostUI);
+                System.out.println("[Host] Showing HostChatWindow...");
                 HostChatWindow.show();
+                System.out.println("[Host] HostChatWindow initialized successfully");
             } catch (Exception e) {
                 System.err.println("[Host] Error initializing chat window: " + e.getMessage());
                 e.printStackTrace();
@@ -358,6 +362,7 @@ public class ViewerClient extends Application {
     }
     
     private void sendChatFromHostUI(String text) {
+        System.out.println("[Host] sendChatFromHostUI called with text: '" + text + "'");
         try {
             if (hostIdRef == null || hostIdRef.isEmpty()) {
                 System.err.println("[Host] sendChatFromUI aborted: hostIdRef is null/empty");
