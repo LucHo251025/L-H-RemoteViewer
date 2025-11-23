@@ -171,6 +171,17 @@ public class ViewerClient extends Application {
             }
         });
         
+        // Also set callback when control connection is accepted
+        Platform.runLater(() -> {
+            try {
+                HostChatWindow.initIfNeeded();
+                HostChatWindow.setOnSend(this::sendChatFromHostUI);
+                System.out.println("[Host] onSend callback set again for safety");
+            } catch (Exception e) {
+                System.err.println("[Host] Error setting callback: " + e.getMessage());
+            }
+        });
+        
         // Start host servers in background thread
         new Thread(() -> {
             try {
@@ -263,6 +274,17 @@ public class ViewerClient extends Application {
             try (Socket controlSocket = controlServer.accept()) {
                 System.out.println("[Host] Control connection accepted from viewer: " + controlSocket.getRemoteSocketAddress());
                 hostControlSocketRef = controlSocket;
+                
+                // Ensure HostChatWindow callback is set when viewer connects
+                Platform.runLater(() -> {
+                    try {
+                        HostChatWindow.initIfNeeded();
+                        HostChatWindow.setOnSend(this::sendChatFromHostUI);
+                        System.out.println("[Host] onSend callback set when viewer connected");
+                    } catch (Exception e) {
+                        System.err.println("[Host] Error setting callback on connect: " + e.getMessage());
+                    }
+                });
                 
                 // Start reader thread to handle incoming control messages
                 Thread readerThread = new Thread(() -> {
