@@ -110,6 +110,7 @@ public class HostClient extends Application {
     private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun, AudioManager audioManager, UplinkManager uplinkManager) {
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
+                System.out.println("[Host] Control connection accepted from viewer: " + controlSocket.getRemoteSocketAddress());
                 controlSocketRef = controlSocket;
                 currentControlSocket = controlSocket;
 
@@ -119,21 +120,26 @@ public class HostClient extends Application {
                         while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
                             try {
                                 MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
-                                if (incoming == null) break;
+                                if (incoming == null) {
+                                    System.out.println("[Host] Incoming control message is null, breaking reader loop");
+                                    break;
+                                }
 
                                 String msg = incoming.getMessage();
-                                System.out.println("Host received message: " + msg); // Debug log
+                                System.out.println("[Host] Host received control message: " + msg);
 
                                 if (msg != null) {
                                     handleControlCommand(null, msg, null, audioManager, uplinkManager, controlSocket, hostId);
                                 }
                             } catch (Exception e) {
-                                System.err.println("Error reading control message: " + e.getMessage());
+                                System.err.println("[Host] Error reading control message: " + e.getMessage());
+                                e.printStackTrace();
                                 break;
                             }
                         }
                     } catch (Exception e) {
-                        System.err.println("Control reader thread error: " + e.getMessage());
+                        System.err.println("[Host] Control reader thread error: " + e.getMessage());
+                        e.printStackTrace();
                     }
                 }, "HostControlReader");
                 readerThread.setDaemon(true);
@@ -146,9 +152,10 @@ public class HostClient extends Application {
                 }
 
             } catch (Exception e) {
-                System.err.println("Control connection error: " + e.getMessage());
+                System.err.println("[Host] Control connection error: " + e.getMessage());
                 e.printStackTrace();
             } finally {
+                System.out.println("[Host] Control connection closed");
                 currentControlSocket = null;
                 controlSocketRef = null;
             }
@@ -258,7 +265,7 @@ public class HostClient extends Application {
                     // Receive viewer chat and show it on Host chat window only.
                     // Do NOT echo back automatically to avoid duplicates on Viewer side.
                     String text = command.length() > 5 ? command.substring(5) : "";
-                    System.out.println("Received chat from viewer: " + text);
+                    System.out.println("[Host] Received CHAT from viewer: '" + text + "'");
                     Platform.runLater(() -> {
                         try {
                             HostChatWindow.initIfNeeded();
@@ -296,11 +303,13 @@ public class HostClient extends Application {
     public static void sendChatFromUI(String text) {
         try {
             if (hostIdRef == null || hostIdRef.isEmpty()) {
+                System.err.println("[Host] sendChatFromUI aborted: hostIdRef is null/empty");
                 showChatError("Không gửi được chat: hostId bị rỗng hoặc null.");
                 return;
             }
 
             if (controlSocketRef == null || controlSocketRef.isClosed()) {
+                System.err.println("[Host] sendChatFromUI aborted: controlSocketRef is null or closed");
                 showChatError("Không gửi được chat: chưa có Viewer kết nối hoặc kết nối điều khiển đã mất.");
                 return;
             }
@@ -308,13 +317,13 @@ public class HostClient extends Application {
             String trimmed = (text == null) ? "" : text.trim();
             if (trimmed.isEmpty()) return;
 
-            System.out.println("Sending chat message from host to viewer: " + trimmed);
+            System.out.println("[Host] Preparing to send chat message from host to viewer: '" + trimmed + "'");
 
             synchronized (controlWriteLock) {
                 MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostIdRef);
                 reply.setMessage("CHAT:" + trimmed);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocketRef, reply);
-                System.out.println("Chat message sent to viewer over control socket");
+                System.out.println("[Host] Chat message sent to viewer over control socket: '" + trimmed + "'");
             }
 
             // Cập nhật UI cửa sổ chat riêng (nếu đang dùng)
@@ -331,7 +340,9 @@ public class HostClient extends Application {
 
     // Expose connection state so HostController can show a friendly message instead of failing silently
     public static boolean isControlConnected() {
-        return controlSocketRef != null && !controlSocketRef.isClosed();
+        boolean connected = controlSocketRef != null && !controlSocketRef.isClosed();
+        System.out.println("[Host] isControlConnected() -> " + connected + ", socketRef=" + controlSocketRef);
+        return connected;
     }
 
     // Manages accepting an audio client and streaming microphone PCM when enabled (Host -> Viewer)
