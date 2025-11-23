@@ -113,9 +113,16 @@ public class HostClient extends Application {
                 System.out.println("[Host] Control connection accepted from viewer: " + controlSocket.getRemoteSocketAddress());
                 controlSocketRef = controlSocket;
                 currentControlSocket = controlSocket;
+                Robot robot = new Robot();
+                Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
+                try {
+                    MessageModel info = new MessageModel(Constant.ACTION_HOST, hostId);
+                    info.setMessage("HOST_SCREEN:" + screenRect.width + ":" + screenRect.height);
+                    SocketMethodHelpers.sendMessage(controlSocket, info);
+                } catch (Exception ignore) {}
 
                 // ===== THÊM PHẦN NÀY: Thread để nhận tin nhắn từ Viewer =====
-                Thread readerThread = new Thread(() -> {
+                //Thread readerThread = new Thread(() -> {
                     try {
                         while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
                             try {
@@ -129,7 +136,7 @@ public class HostClient extends Application {
                                 System.out.println("[Host] Host received control message: " + msg);
 
                                 if (msg != null) {
-                                    handleControlCommand(null, msg, null, audioManager, uplinkManager, controlSocket, hostId);
+                                    handleControlCommand(robot, msg, screenRect, audioManager, uplinkManager, controlSocket, hostId);
                                 }
                             } catch (Exception e) {
                                 System.err.println("[Host] Error reading control message: " + e.getMessage());
@@ -141,26 +148,13 @@ public class HostClient extends Application {
                         System.err.println("[Host] Control reader thread error: " + e.getMessage());
                         e.printStackTrace();
                     }
-                }, "HostControlReader");
-                readerThread.setDaemon(true);
-                readerThread.start();
+              //  }, "HostControlReader");
+             //   readerThread.setDaemon(true);
+              //  readerThread.start();
                 // ===== KẾT THÚC PHẦN THÊM =====
 
-                MessageModel hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
-                Robot robot = new Robot();
-                Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 
-                // Send screen size info to viewer
-                try {
-                    MessageModel info = new MessageModel(Constant.ACTION_HOST, hostId);
-                    info.setMessage("HOST_SCREEN:" + screenRect.width + ":" + screenRect.height);
-                    SocketMethodHelpers.sendMessage(controlSocket, info);
-                } catch (Exception ignore) {}
 
-                while (shouldRun.getAsBoolean() && hostControlModel != null) {
-                    handleControlCommand(robot, hostControlModel.getMessage(), screenRect,audioManager, uplinkManager, controlSocket, hostId);
-                    hostControlModel = SocketMethodHelpers.readMessage(controlSocket);
-                }
             } catch (Exception e) {
                 System.err.println("[Host] Control connection error: " + e.getMessage());
                 e.printStackTrace();

@@ -41,7 +41,12 @@ public class SocketMethodHelpers {
 	public static <T> T readMessage(Socket socket) throws Exception {
 		DataInputStream inputServer = new DataInputStream(socket.getInputStream());
 		int length = inputServer.readInt();
+
+        if(length<0){
+            return null;
+        }
 		byte[] received = inputServer.readNBytes(length);
+
 
 		T message = SocketMethodHelpers.byteArrayToType(received);
 
