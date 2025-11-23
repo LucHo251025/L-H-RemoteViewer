@@ -269,6 +269,8 @@ public class HostClient extends Application {
                     Platform.runLater(() -> {
                         try {
                             HostChatWindow.initIfNeeded();
+                            // Ensure onSend callback is always wired when chat window is used
+                            HostChatWindow.setOnSend(HostClient::sendChatFromUI);
                             HostChatWindow.show();
                             HostChatWindow.addMessage("Viewer", text);
                         } catch (Exception e) {
