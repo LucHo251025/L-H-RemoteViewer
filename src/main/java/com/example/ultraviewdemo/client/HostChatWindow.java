@@ -25,9 +25,17 @@ public class HostChatWindow {
     private static Consumer<String> onSend;
 
     public static void initIfNeeded() {
-        if (stage != null) return;
+        if (stage != null) {
+            System.out.println("[HostChatWindow] initIfNeeded() called but stage already exists");
+            return;
+        }
+        System.out.println("[HostChatWindow] initIfNeeded() called - creating new stage");
         Platform.runLater(() -> {
-            if (stage != null) return;
+            if (stage != null) {
+                System.out.println("[HostChatWindow] Stage already created in another thread, returning");
+                return;
+            }
+            System.out.println("[HostChatWindow] Creating new HostChatWindow stage...");
             stage = new Stage(StageStyle.DECORATED);
             stage.setTitle("Host Chat");
             stage.setAlwaysOnTop(true);
@@ -67,12 +75,22 @@ public class HostChatWindow {
             input.setOnAction(e -> sendAction.run());
 
             stage.setScene(new Scene(root));
+            System.out.println("[HostChatWindow] Stage created and scene set successfully");
         });
     }
 
     public static void show() {
+        System.out.println("[HostChatWindow] show() called");
         initIfNeeded();
-        Platform.runLater(() -> { if (stage != null) stage.show(); });
+        Platform.runLater(() -> { 
+            if (stage != null) {
+                System.out.println("[HostChatWindow] Actually showing stage");
+                stage.show();
+                stage.toFront();
+            } else {
+                System.err.println("[HostChatWindow] ERROR: stage is null when trying to show!");
+            }
+        });
     }
 
     public static void hide() {
