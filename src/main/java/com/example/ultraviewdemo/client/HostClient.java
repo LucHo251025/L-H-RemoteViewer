@@ -34,24 +34,6 @@ public class HostClient extends Application {
     private static volatile java.util.function.Consumer<String> chatSink;
 
     public static void setChatSink(java.util.function.Consumer<String> sink) { chatSink = sink; }
-    
-    public static void sendHostChat(String text, String hostId) {
-        try {
-            Socket s = currentControlSocket;
-            if (s == null || s.isClosed()) {
-                System.err.println("sendHostChat: currentControlSocket is null or closed");
-                return;
-            }
-            MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostId);
-            reply.setMessage("CHAT:" + text);
-            System.out.println("sendHostChat: sending to viewer, hostId=" + hostId + ", text=" + text);
-            SocketMethodHelpers.sendMessage(s, reply);
-            System.out.println("sendHostChat: message sent");
-        } catch (Exception ex) {
-            System.err.println("Error in sendHostChat: " + ex.getMessage());
-            ex.printStackTrace();
-        }
-    }
 
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
         hostIdRef = hostId;
@@ -131,6 +113,7 @@ public class HostClient extends Application {
                 controlSocketRef = controlSocket;
                 currentControlSocket = controlSocket;
 
+                // ===== THÊM PHẦN NÀY: Thread để nhận tin nhắn từ Viewer =====
                 Thread readerThread = new Thread(() -> {
                     try {
                         while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
@@ -317,23 +300,28 @@ public class HostClient extends Application {
                 return;
             }
 
-            if (currentControlSocket == null || currentControlSocket.isClosed()) {
+            if (controlSocketRef == null || controlSocketRef.isClosed()) {
                 showChatError("Không gửi được chat: chưa có Viewer kết nối hoặc kết nối điều khiển đã mất.");
                 return;
             }
 
-            System.out.println("Sending chat message from host to viewer: " + text);
+            String trimmed = (text == null) ? "" : text.trim();
+            if (trimmed.isEmpty()) return;
+
+            System.out.println("Sending chat message from host to viewer: " + trimmed);
 
             synchronized (controlWriteLock) {
-                sendHostChat(text, hostIdRef);
+                MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostIdRef);
+                reply.setMessage("CHAT:" + trimmed);
+                SocketMethodHelpers.sendMessageNoTrack(controlSocketRef, reply);
                 System.out.println("Chat message sent to viewer over control socket");
             }
-            
-            // Update UI immediately
+
+            // Cập nhật UI cửa sổ chat riêng (nếu đang dùng)
             Platform.runLater(() -> {
                 HostChatWindow.initIfNeeded();
                 HostChatWindow.show();
-                HostChatWindow.addMessage("Host", text);
+                HostChatWindow.addMessage("Host", trimmed);
             });
         } catch (Exception e) {
             showChatError("Lỗi gửi chat: " + e.getMessage());
