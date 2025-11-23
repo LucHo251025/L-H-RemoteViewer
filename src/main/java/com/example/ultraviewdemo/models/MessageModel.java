@@ -10,7 +10,6 @@ public class MessageModel implements Serializable {
     private String owner_password;
     private String partner_id;
     private String partner_password;
-
     private boolean isSuccess;
     private String message;
     private byte[] data;

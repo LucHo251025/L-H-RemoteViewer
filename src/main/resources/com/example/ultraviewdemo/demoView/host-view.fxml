@@ -5,10 +5,12 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ListView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
@@ -52,7 +54,24 @@
 			<HBox alignment="CENTER" spacing="12.0">
 				<Button fx:id="stopBtn" disable="true" text="Stop" />
 				<Button fx:id="startBtn" styleClass="connect-button" text="Start Sharing" />
+				<Button fx:id="openChatBtn" text="Chat" />
 			</HBox>
+
+			<!-- Small toggleable Chat Pane -->
+			<VBox fx:id="chatPane" spacing="8.0" visible="false" managed="false"
+				  style="-fx-background-color: #ffffff; -fx-background-radius: 10; -fx-border-color: #e5e7eb; -fx-border-radius: 10; -fx-padding: 10;">
+				<HBox alignment="CENTER_LEFT" spacing="8.0">
+					<Label text="💬 Chat" style="-fx-font-weight: 700; -fx-text-fill: #111827;" />
+					<Region HBox.hgrow="ALWAYS" />
+					<Button text="✕" onAction="#hideChatPane"
+							style="-fx-background-color: transparent; -fx-text-fill: #6b7280;" />
+				</HBox>
+				<ListView fx:id="hostChatList" prefHeight="180.0" />
+				<HBox spacing="8.0">
+					<TextField fx:id="hostChatInput" promptText="Type a message..." HBox.hgrow="ALWAYS" />
+					<Button fx:id="hostSendBtn" text="Send" />
+				</HBox>
+			</VBox>
 			<Label fx:id="statusLabel" text="Idle" />
 		</VBox>
 	</center>
