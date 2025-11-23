@@ -55,7 +55,6 @@ public class HostChatWindow {
                 text = text.trim();
                 if (text.isEmpty()) return;
                 input.clear();
-                addMessage("Host", text);
                 System.out.println("[HostChatWindow] onSend callback is: " + (onSend != null ? "SET" : "NULL"));
                 if (onSend != null) {
                     onSend.accept(text);
