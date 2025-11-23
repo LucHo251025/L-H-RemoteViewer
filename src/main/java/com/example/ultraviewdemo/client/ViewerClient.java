@@ -280,7 +280,9 @@ public class ViewerClient extends Application {
                     try {
                         HostChatWindow.initIfNeeded();
                         HostChatWindow.setOnSend(this::sendChatFromHostUI);
-                        System.out.println("[Host] onSend callback set when viewer connected");
+                        HostChatWindow.show();
+                        HostChatWindow.addMessage("System", "Viewer connected successfully!");
+                        System.out.println("[Host] HostChatWindow shown when viewer connected");
                     } catch (Exception e) {
                         System.err.println("[Host] Error setting callback on connect: " + e.getMessage());
                     }
