@@ -1,110 +1,479 @@
     package com.example.ultraviewdemo.client;
 
-    import com.example.ultraviewdemo.helpers.Constant;
-    import com.example.ultraviewdemo.helpers.SocketMethodHelpers;
-    import com.example.ultraviewdemo.models.MessageModel;
-    import javafx.application.Application;
-    import javafx.application.Platform;
-    import javafx.fxml.FXMLLoader;
-    import javafx.scene.Scene;
-    import javafx.scene.control.Alert;
-    import javafx.scene.image.*;
-    import javafx.scene.image.WritableImage;
-    import javafx.scene.layout.*;
-    import javafx.stage.Stage;
+import com.example.ultraviewdemo.helpers.Constant;
+import com.example.ultraviewdemo.helpers.SocketMethodHelpers;
+import com.example.ultraviewdemo.models.MessageModel;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.image.*;
+import javafx.scene.image.WritableImage;
+import javafx.scene.layout.*;
+import javafx.stage.Stage;
 
-    import javax.sound.sampled.*;
-    import java.io.*;
-    import java.net.*;
+import javax.imageio.ImageIO;
+import javax.sound.sampled.*;
+import java.awt.*;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.io.*;
+import java.net.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
-    public class ViewerClient extends Application {
-        private String serverHost = "localhost";
-        private int serverPort = 5000; // unused in P2P; kept for compatibility
-        private String hostId = "";
-        private String password = "";
-        private ImageView remoteImageView;
-        private Socket controlSocket;
-        private MessageModel viewerControlModel;
-        private com.example.ultraviewdemo.UltraViewController uiController;
-        private final Object controlWriteLock = new Object();
+public class ViewerClient extends Application {
+    private String serverHost = "localhost";
+    private int serverPort = 5000; // unused in P2P; kept for compatibility
+    private String hostId = "";
+    private String password = "";
+    private ImageView remoteImageView;
+    private Socket controlSocket;
+    private MessageModel viewerControlModel;
+    private com.example.ultraviewdemo.UltraViewController uiController;
+    private final Object controlWriteLock = new Object();
 
-        // Audio
-        private volatile Socket audioSocket;
-        private volatile Thread audioThread;
-        private volatile SourceDataLine speakerLine;
-        private volatile boolean audioEnabled = false;
-        private volatile Socket uplinkSocket;
-        private volatile Thread uplinkThread;
-        private volatile TargetDataLine micLine;
+    // Mode: "viewer" (default) or "host"
+    private String mode = "viewer";
+    
+    // Host mode variables
+    private static volatile Socket hostControlSocketRef;
+    private static final Object hostControlWriteLock = new Object();
+    private static volatile String hostIdRef;
+    private static volatile BooleanSupplier hostShouldRun;
+    private static volatile com.example.ultraviewdemo.client.HostClient.AudioManager hostAudioManager;
+    private static volatile com.example.ultraviewdemo.client.HostClient.UplinkManager hostUplinkManager;
+    
+    // Audio
+    private volatile Socket audioSocket;
+    private volatile Thread audioThread;
+    private volatile boolean audioEnabled = false;
+    private volatile Socket uplinkSocket;
+    private volatile Thread uplinkThread;
+    private volatile TargetDataLine micLine;
 
         // P2P target resolved from directory server
-        private String hostIp;
-        private int hostStreamPort;
-        private int hostControlPort;
+    private String hostIp;
+    private int hostStreamPort;
+    private int hostControlPort;
 
-        @Override
-        public void start(Stage stage) throws Exception {
-            FXMLLoader connectLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/connect-host.fxml"));
-            Scene connectScene = new Scene(connectLoader.load(), 480, 360);
-            String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
-            connectScene.getStylesheets().add(cssPath);
-            stage.setTitle("UltraView Remote - Connect");
-            stage.setScene(connectScene);
-            stage.show();
-
-            ConnectHostController controller = connectLoader.getController();
-            controller.setOnConnect(params -> {
-                this.serverHost = params.server;
-                this.serverPort = params.port;
-                this.hostId = params.hostId;
-                this.password = params.password;
-
-                // Query directory server for host endpoints, then connect directly
-                new Thread(() -> {
-                    try (Socket dir = new Socket(serverHost, 7000)) {
-                        MessageModel q = new MessageModel(Constant.ACTION_VIEWER_QUERY, "viewer");
-                        q.setPartner_id(hostId);
-                        q.setPartner_password(password);
-                        SocketMethodHelpers.sendMessage(dir, q);
-
-                        MessageModel resp = SocketMethodHelpers.readMessage(dir);
-                        if (!resp.isSuccess()) {
-                            String code = resp.getMessage();
-                            if ("HOST_NOT_FOUND".equals(code)) {
-                                Platform.runLater(() -> showInfo("Host not found or not registered yet."));
-                            } else if ("AUTH_FAILED".equals(code)) {
-                                Platform.runLater(() -> showError("Authentication failed. Please check Host ID/password."));
-                            } else {
-                                Platform.runLater(() -> showError("Directory query failed: " + code));
-                            }
-                            return;
-                        }
-
-                        String[] parts = resp.getMessage().split(":");
-                        if (parts.length < 3) {
-                            Platform.runLater(() -> showError("Invalid directory payload."));
-                            return;
-                        }
-                        hostIp = parts[0];
-                        hostStreamPort = Integer.parseInt(parts[1]);
-                        hostControlPort = Integer.parseInt(parts[2]);
-
-                        Platform.runLater(() -> {
-                            try {
-                                openControlWindow();
-                                startNetworkConnection();
-                                startControlConnection();
-                            } catch (IOException e) {
-                                showError("Failed to load control UI: " + e.getMessage());
-                            }
-                        });
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        Platform.runLater(() -> showError("Cannot reach directory server: " + e.getMessage()));
-                    }
-                }).start();
-            });
+    @Override
+    public void start(Stage stage) throws Exception {
+        // Check for --mode=host parameter
+        Application.Parameters params = getParameters();
+        if (params.getRaw().contains("--mode=host")) {
+            mode = "host";
+            System.out.println("[Viewer] Running in HOST mode");
+        } else {
+            System.out.println("[Viewer] Running in VIEWER mode (default)");
         }
+        
+        if ("host".equals(mode)) {
+            startHostMode(stage);
+        } else {
+            startViewerMode(stage);
+        }
+    }
+    
+    private void startViewerMode(Stage stage) throws Exception {
+        FXMLLoader connectLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/connect-host.fxml"));
+        Scene connectScene = new Scene(connectLoader.load(), 480, 360);
+        String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
+        connectScene.getStylesheets().add(cssPath);
+        stage.setTitle("UltraView Remote - Connect");
+        stage.setScene(connectScene);
+        stage.show();
+
+        ConnectHostController controller = connectLoader.getController();
+        controller.setOnConnect(params -> {
+            this.serverHost = params.server;
+            this.serverPort = params.port;
+            this.hostId = params.hostId;
+            this.password = params.password;
+
+            // Query directory server for host endpoints, then connect directly
+            new Thread(() -> {
+                try (Socket dir = new Socket(serverHost, 7000)) {
+                    MessageModel q = new MessageModel(Constant.ACTION_VIEWER_QUERY, "viewer");
+                    q.setPartner_id(hostId);
+                    q.setPartner_password(password);
+                    SocketMethodHelpers.sendMessage(dir, q);
+
+                    MessageModel resp = SocketMethodHelpers.readMessage(dir);
+                    if (!resp.isSuccess()) {
+                        String code = resp.getMessage();
+                        if ("HOST_NOT_FOUND".equals(code)) {
+                            Platform.runLater(() -> showInfo("Host not found or not registered yet."));
+                        } else if ("AUTH_FAILED".equals(code)) {
+                            Platform.runLater(() -> showError("Authentication failed. Please check Host ID/password."));
+                        } else {
+                            Platform.runLater(() -> showError("Directory query failed: " + code));
+                        }
+                        return;
+                    }
+
+                    String[] parts = resp.getMessage().split(":");
+                    if (parts.length < 3) {
+                        Platform.runLater(() -> showError("Invalid directory payload."));
+                        return;
+                    }
+                    hostIp = parts[0];
+                    hostStreamPort = Integer.parseInt(parts[1]);
+                    hostControlPort = Integer.parseInt(parts[2]);
+
+                    Platform.runLater(() -> {
+                        try {
+                            openControlWindow();
+                            startNetworkConnection();
+                            startControlConnection();
+                        } catch (IOException e) {
+                            showError("Failed to load control UI: " + e.getMessage());
+                        }
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Platform.runLater(() -> showError("Cannot reach directory server: " + e.getMessage()));
+                }
+            }).start();
+        });
+    }
+    
+    private void startHostMode(Stage stage) throws Exception {
+        System.out.println("[Host] Starting in HOST mode");
+        
+        // Set up host ID and password (for now, use defaults)
+        this.hostId = "host-" + System.currentTimeMillis();
+        this.password = "123456";
+        hostIdRef = this.hostId;
+        
+        // Create shouldRun flag
+        AtomicBoolean shouldRunFlag = new AtomicBoolean(true);
+        hostShouldRun = shouldRunFlag::get;
+        
+        // Show host UI with chat window
+        Platform.runLater(() -> {
+            try {
+                HostChatWindow.initIfNeeded();
+                HostChatWindow.setOnSend(this::sendChatFromHostUI);
+                HostChatWindow.show();
+            } catch (Exception e) {
+                System.err.println("[Host] Error initializing chat window: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+        
+        // Start host servers in background thread
+        new Thread(() -> {
+            try {
+                startHostShareLoop(5000, shouldRunFlag);
+            } catch (Exception e) {
+                System.err.println("[Host] Error in host share loop: " + e.getMessage());
+                e.printStackTrace();
+                Platform.runLater(() -> showError("Host error: " + e.getMessage()));
+            }
+        }, "HostShareLoop").start();
+    }
+    
+    private void startHostShareLoop(int basePort, AtomicBoolean shouldRun) throws Exception {
+        System.out.println("[Host] Starting host servers on base port: " + basePort);
+        
+        // Create server sockets
+        ServerSocket streamServer = createServerSocket(basePort);
+        ServerSocket controlServer = createServerSocket(basePort + 1);
+        ServerSocket audioServer = createServerSocket(basePort + 2);
+        ServerSocket uplinkServer = createServerSocket(basePort + 3);
+        
+        // Create audio and uplink managers (simplified versions)
+        HostAudioManager audioManager = new HostAudioManager(audioServer, shouldRun::get);
+        HostUplinkManager uplinkManager = new HostUplinkManager(uplinkServer, shouldRun::get);
+        hostAudioManager = audioManager;
+        hostUplinkManager = uplinkManager;
+        
+        // Start audio and uplink accept loops
+        audioManager.startAcceptLoop();
+        uplinkManager.startAcceptLoop();
+        
+        // Register with directory server
+        String localIp = InetAddress.getLocalHost().getHostAddress();
+        try (Socket dirSocket = new Socket("localhost", 7000)) {
+            MessageModel reg = new MessageModel(Constant.ACTION_HOST_REGISTER, hostId);
+            reg.setOwner_password(password);
+            SocketMethodHelpers.sendMessage(dirSocket, reg);
+            System.out.println("[Host] Registered with directory server as " + hostId);
+        }
+        
+        // Start control accept
+        startHostControlAccept(controlServer, hostId, password, shouldRun::get, audioManager, uplinkManager);
+        
+        // Start screen sharing
+        try (Socket streamSocket = streamServer.accept()) {
+            System.out.println("[Host] Stream connection accepted from: " + streamSocket.getRemoteSocketAddress());
+            Robot robot = new Robot();
+            Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
+            DataOutputStream out = new DataOutputStream(streamSocket.getOutputStream());
+            
+            try {
+                while (shouldRun.get()) {
+                    BufferedImage screen = robot.createScreenCapture(screenRect);
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    ImageIO.write(screen, "jpg", baos);
+                    byte[] data = baos.toByteArray();
+                    MessageModel screenModel = new MessageModel(Constant.ACTION_HOST, hostId);
+                    screenModel.setOwner_password(password);
+                    screenModel.setData(data);
+                    SocketMethodHelpers.sendMessage(streamSocket, screenModel);
+                    
+                    Thread.sleep(100);
+                }
+            } finally {
+                try { out.close(); } catch (Exception ignore) {}
+            }
+        } finally {
+            // Close all servers
+            try { streamServer.close(); } catch (Exception ignore) {}
+            try { controlServer.close(); } catch (Exception ignore) {}
+            try { audioServer.close(); } catch (Exception ignore) {}
+            try { uplinkServer.close(); } catch (Exception ignore) {}
+            System.out.println("[Host] Host servers closed");
+        }
+    }
+    
+    private ServerSocket createServerSocket(int port) throws IOException {
+        try {
+            ServerSocket ss = new ServerSocket();
+            ss.setReuseAddress(true);
+            ss.bind(new InetSocketAddress(port));
+            return ss;
+        } catch (BindException be) {
+            throw new IOException("Port " + port + " is already in use. Please close other instances or choose a different base port.", be);
+        }
+    }
+    
+    private void startHostControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun, HostAudioManager audioManager, HostUplinkManager uplinkManager) {
+        new Thread(() -> {
+            try (Socket controlSocket = controlServer.accept()) {
+                System.out.println("[Host] Control connection accepted from viewer: " + controlSocket.getRemoteSocketAddress());
+                hostControlSocketRef = controlSocket;
+                
+                // Start reader thread to handle incoming control messages
+                Thread readerThread = new Thread(() -> {
+                    try {
+                        while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
+                            try {
+                                MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
+                                if (incoming == null) {
+                                    System.out.println("[Host] Incoming control message is null, breaking reader loop");
+                                    break;
+                                }
+                                
+                                String msg = incoming.getMessage();
+                                System.out.println("[Host] Host received control message: " + msg);
+                                
+                                if (msg != null) {
+                                    handleHostControlCommand(msg, audioManager, uplinkManager, controlSocket, hostId);
+                                }
+                            } catch (Exception e) {
+                                System.err.println("[Host] Error reading control message: " + e.getMessage());
+                                e.printStackTrace();
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[Host] Control reader thread error: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }, "HostControlReader");
+                readerThread.setDaemon(true);
+                readerThread.start();
+                
+                // Keep this thread alive to maintain connection
+                while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
+                    Thread.sleep(100);
+                }
+                
+            } catch (Exception e) {
+                System.err.println("[Host] Control connection error: " + e.getMessage());
+                e.printStackTrace();
+            } finally {
+                System.out.println("[Host] Control connection closed");
+                hostControlSocketRef = null;
+            }
+        }, "HostControlAccept").start();
+    }
+    
+    private void handleHostControlCommand(String command, HostAudioManager audioManager, HostUplinkManager uplinkManager, Socket controlSocket, String hostId) {
+        try {
+            if (command == null) return;
+            String[] parts = command.split(":");
+            if (parts.length < 2) return;
+            
+            String action = parts[0];
+            
+            switch (action) {
+                case "AUDIO":
+                    if (parts.length >= 2) {
+                        String state = parts[1];
+                        boolean enable = "ON".equalsIgnoreCase(state);
+                        if (enable) audioManager.enable(); else audioManager.disable();
+                    }
+                    break;
+                case "AUDIO_UP":
+                    if (parts.length >= 2) {
+                        String state = parts[1];
+                        boolean enable = "ON".equalsIgnoreCase(state);
+                        if (enable) uplinkManager.enable(); else uplinkManager.disable();
+                    }
+                    break;
+                case "CHAT":
+                    String text = command.length() > 5 ? command.substring(5) : "";
+                    System.out.println("[Host] Received CHAT from viewer: '" + text + "'");
+                    Platform.runLater(() -> {
+                        try {
+                            HostChatWindow.initIfNeeded();
+                            HostChatWindow.show();
+                            HostChatWindow.addMessage("Viewer", text);
+                        } catch (Exception e) {
+                            System.err.println("Error showing chat message: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    });
+                    break;
+                case "CHAT_ACK":
+                    String ackText = command.length() > 9 ? command.substring(9) : "";
+                    System.out.println("[Host] Received CHAT_ACK from viewer for: '" + ackText + "'");
+                    break;
+                // Handle mouse/keyboard commands if needed in the future
+                default:
+                    System.out.println("[Host] Unknown control command: " + action);
+            }
+        } catch (Exception e) {
+            System.err.println("[Host] Error handling control command: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private void sendChatFromHostUI(String text) {
+        try {
+            if (hostIdRef == null || hostIdRef.isEmpty()) {
+                System.err.println("[Host] sendChatFromUI aborted: hostIdRef is null/empty");
+                showHostChatError("Không gửi được chat: hostId bị rỗng hoặc null.");
+                return;
+            }
+            
+            if (hostControlSocketRef == null || hostControlSocketRef.isClosed()) {
+                System.err.println("[Host] sendChatFromUI aborted: hostControlSocketRef is null or closed");
+                showHostChatError("Không gửi được chat: chưa có Viewer kết nối hoặc kết nối điều khiển đã mất.");
+                return;
+            }
+            
+            String trimmed = (text == null) ? "" : text.trim();
+            if (trimmed.isEmpty()) return;
+            
+            System.out.println("[Host] Preparing to send chat message from host to viewer: '" + trimmed + "'");
+            
+            synchronized (hostControlWriteLock) {
+                MessageModel reply = new MessageModel(Constant.ACTION_HOST, hostIdRef);
+                reply.setMessage("CHAT:" + trimmed);
+                SocketMethodHelpers.sendMessageNoTrack(hostControlSocketRef, reply);
+                System.out.println("[Host] Chat message sent to viewer over control socket: '" + trimmed + "'");
+            }
+            
+            // Update UI chat window
+            Platform.runLater(() -> {
+                HostChatWindow.initIfNeeded();
+                HostChatWindow.show();
+                HostChatWindow.addMessage("Host", trimmed);
+            });
+        } catch (Exception e) {
+            showHostChatError("Lỗi gửi chat: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private void showHostChatError(String message) {
+        System.err.println(message);
+        Platform.runLater(() -> {
+            try {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setTitle("Chat Error");
+                alert.setHeaderText(null);
+                alert.setContentText(message);
+                alert.showAndWait();
+            } catch (Exception ignored) {}
+        });
+    }
+    
+    // Simplified audio manager for host mode
+    private static class HostAudioManager {
+        private final ServerSocket server;
+        private final BooleanSupplier shouldRun;
+        private volatile boolean enabled = false;
+        private volatile Socket client;
+        private volatile Thread acceptThread;
+        
+        HostAudioManager(ServerSocket server, BooleanSupplier shouldRun) {
+            this.server = server;
+            this.shouldRun = shouldRun;
+        }
+        
+        void startAcceptLoop() {
+            acceptThread = new Thread(() -> {
+                try {
+                    while (shouldRun.getAsBoolean()) {
+                        client = server.accept();
+                        System.out.println("[Host] Audio client connected: " + client.getRemoteSocketAddress());
+                        if (enabled) startSender();
+                    }
+                } catch (IOException e) {
+                    if (shouldRun.getAsBoolean()) System.err.println("Audio accept stopped: " + e.getMessage());
+                }
+            }, "AudioAcceptLoop");
+            acceptThread.start();
+        }
+        
+        void enable() { enabled = true; }
+        void disable() { enabled = false; }
+    }
+    
+    // Simplified uplink manager for host mode
+    private static class HostUplinkManager {
+        private final ServerSocket server;
+        private final BooleanSupplier shouldRun;
+        private volatile boolean enabled = false;
+        private volatile Socket client;
+        private volatile Thread acceptThread;
+        
+        HostUplinkManager(ServerSocket server, BooleanSupplier shouldRun) {
+            this.server = server;
+            this.shouldRun = shouldRun;
+        }
+        
+        void startAcceptLoop() {
+            acceptThread = new Thread(() -> {
+                try {
+                    while (shouldRun.getAsBoolean()) {
+                        client = server.accept();
+                        System.out.println("[Host] Uplink client connected: " + client.getRemoteSocketAddress());
+                        if (enabled) startReceiver();
+                    }
+                } catch (IOException e) {
+                    if (shouldRun.getAsBoolean()) System.err.println("Uplink accept stopped: " + e.getMessage());
+                }
+            }, "UplinkAcceptLoop");
+            acceptThread.start();
+        }
+        
+        void enable() { enabled = true; }
+        void disable() { enabled = false; }
+        
+        private void startReceiver() {
+            // Simplified - just accept connection
+            System.out.println("[Host] Uplink receiver started");
+        }
+    }
 
         private void showError(String msg) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -552,6 +921,6 @@
         }
 
         public static void main(String[] args) {
-            launch();
+            launch(args);
         }
     }
