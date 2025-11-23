@@ -123,7 +123,9 @@ public class ConnectHostController {
                 while (addrs.hasMoreElements()) {
                     InetAddress addr = addrs.nextElement();
                     if (addr instanceof Inet4Address) {
-                        sb.append(nif.getName()).append(" - ").append(addr.getHostAddress()).append('\n');
+                        String name = nif.getName();
+                        // Căn cột: tên interface rộng cố định, IP nằm cột bên phải
+                        sb.append(String.format("%-18s %s%n", name, addr.getHostAddress()));
                     }
                 }
             }

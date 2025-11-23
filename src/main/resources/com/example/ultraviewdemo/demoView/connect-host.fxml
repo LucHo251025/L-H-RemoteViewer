@@ -1,26 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.ultraviewdemo.client.ConnectHostController" style="-fx-background-color: linear-gradient(to bottom, #020617, #020617 40%, #020617); -fx-text-fill: #e5e7eb; -fx-font-family: 'Segoe UI', 'Arial', sans-serif;">
+<BorderPane style="-fx-background-color: linear-gradient(to bottom, #1d0f6b, #0b206f 40%, #031b4a); -fx-text-fill: #e5e7eb; -fx-font-family: 'Segoe UI', 'Arial', sans-serif;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.ultraviewdemo.client.ConnectHostController">
     <center>
-        <ScrollPane fitToWidth="true" pannable="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" style="-fx-background: transparent; -fx-background-color: transparent;">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" pannable="true" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="AS_NEEDED">
             <content>
-                <VBox spacing="24.0" alignment="TOP_CENTER">
-                    <HBox spacing="16.0" alignment="CENTER_LEFT">
-                        <Label text="UltraView Remote" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #f9fafb;" />
+                <VBox alignment="TOP_CENTER" spacing="24.0">
+                    <HBox alignment="CENTER_LEFT" spacing="16.0">
+                        <Label style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #f9fafb;" text="UltraView Remote" />
                         <Region HBox.hgrow="ALWAYS" />
-                        <Label text="Server" GridPane.columnIndex="0" GridPane.rowIndex="2" style="-fx-text-fill: #9ca3af; -fx-font-size: 12px;" />
-                        <TextField fx:id="serverField" promptText="localhost" GridPane.columnIndex="1" GridPane.rowIndex="2" style="-fx-background-color: #020617; -fx-text-fill: #e5e7eb; -fx-background-radius: 10; -fx-border-color: #4b5563; -fx-border-radius: 10; -fx-padding: 6 12; -fx-prompt-text-fill: #6b7280;" />
+                        <Label style="-fx-text-fill: #7dd3fc; -fx-font-size: 12px;" text="Server" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                        <TextField fx:id="serverField" promptText="localhost" style="-fx-background-color: rgba(6, 182, 212, 0.12); -fx-text-fill: #e5e7eb; -fx-background-radius: 14; -fx-border-color: rgba(125, 211, 252, 0.7); -fx-border-width: 1.2; -fx-border-radius: 14; -fx-padding: 6 14; -fx-prompt-text-fill: #7c9cb8;" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                     </HBox>
 
-                    <HBox spacing="24.0" alignment="TOP_CENTER">
+                    <HBox alignment="TOP_CENTER" spacing="24.0">
                         <!-- Connect Panel -->
-                        <VBox spacing="16.0" alignment="TOP_LEFT" style="-fx-background-color: linear-gradient(to bottom, #0b1220, #020617); -fx-background-radius: 18; -fx-padding: 20 24; -fx-border-color: #1f2937; -fx-border-radius: 18; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 20, 0.2, 0, 10);">
-                            <Label text="Connect to a Host" style="-fx-font-size: 14px; -fx-text-fill: #e5e7eb; -fx-font-weight: 600;" />
+                        <VBox alignment="TOP_LEFT" spacing="16.0" style="-fx-background-color: linear-gradient(to bottom right, rgba(37, 99, 235, 0.32), rgba(59, 130, 246, 0.22)); -fx-background-radius: 26; -fx-padding: 26 32; -fx-border-color: rgba(191, 219, 254, 0.7); -fx-border-width: 1.2; -fx-border-radius: 26; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.8), 30, 0.3, 0, 14);">
+                            <Label style="-fx-font-size: 14px; -fx-text-fill: #e5e7eb; -fx-font-weight: 600;" text="Connect to a Host" />
                             <GridPane hgap="12.0" vgap="12.0">
                                 <columnConstraints>
                                     <ColumnConstraints halignment="RIGHT" minWidth="100.0" />
@@ -32,24 +42,24 @@
                                     <RowConstraints minHeight="30.0" />
                                 </rowConstraints>
 
-                                <Label text="Host Address" GridPane.columnIndex="0" GridPane.rowIndex="0" style="-fx-text-fill: #9ca3af;" />
-                                <TextField fx:id="connectHostIdField" promptText="e.g. 192.168.1.100:5000 or hostname" GridPane.columnIndex="1" GridPane.rowIndex="0" style="-fx-background-color: #020617; -fx-text-fill: #e5e7eb; -fx-background-radius: 10; -fx-border-color: #374151; -fx-border-radius: 10; -fx-padding: 8 12; -fx-prompt-text-fill: #6b7280;" />
+                                <Label style="-fx-text-fill: #bfdbfe;" text="Host Address" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                <TextField fx:id="connectHostIdField" promptText="e.g. 192.168.1.100:5000 or hostname" style="-fx-background-color: rgba(15, 23, 42, 0.4); -fx-text-fill: #e5e7eb; -fx-background-radius: 18; -fx-border-color: rgba(191, 219, 254, 0.7); -fx-border-width: 1.1; -fx-border-radius: 18; -fx-padding: 8 16; -fx-prompt-text-fill: #8fa7cf;" GridPane.columnIndex="1" GridPane.rowIndex="0" />
 
-                                <Label text="Host Password" GridPane.columnIndex="0" GridPane.rowIndex="1" style="-fx-text-fill: #9ca3af;" />
-                                <PasswordField fx:id="connectPasswordField" promptText="Enter host password" GridPane.columnIndex="1" GridPane.rowIndex="1" style="-fx-background-color: #020617; -fx-text-fill: #e5e7eb; -fx-background-radius: 10; -fx-border-color: #374151; -fx-border-radius: 10; -fx-padding: 8 12; -fx-prompt-text-fill: #6b7280;" />
+                                <Label style="-fx-text-fill: #bfdbfe;" text="Host Password" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                <PasswordField fx:id="connectPasswordField" promptText="Enter host password" style="-fx-background-color: rgba(15, 23, 42, 0.4); -fx-text-fill: #e5e7eb; -fx-background-radius: 18; -fx-border-color: rgba(191, 219, 254, 0.7); -fx-border-width: 1.1; -fx-border-radius: 18; -fx-padding: 8 16; -fx-prompt-text-fill: #8fa7cf;" GridPane.columnIndex="1" GridPane.rowIndex="1" />
 
-                                <Button fx:id="connectBtn" text="Connect  ➜" GridPane.columnIndex="1" GridPane.rowIndex="2" style="-fx-background-color: linear-gradient(to right, #2563eb, #3b82f6); -fx-text-fill: #ffffff; -fx-background-radius: 999; -fx-padding: 9 24; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                                <Button fx:id="connectBtn" style="-fx-background-color: linear-gradient(to right, #22c1c3, #4f46e5); -fx-text-fill: #ffffff; -fx-background-radius: 999; -fx-padding: 10 26; -fx-font-size: 13px; -fx-font-weight: 600; -fx-effect: dropshadow(gaussian, rgba(56, 189, 248, 0.6), 18, 0.3, 0, 4);" text="Connect  ➜" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                             </GridPane>
-                            <Label fx:id="connectErrorLabel" textFill="#fca5a5" style="-fx-font-size: 12px;" />
+                            <Label fx:id="connectErrorLabel" style="-fx-font-size: 12px;" textFill="#fca5a5" />
                         </VBox>
 
                         <!-- Host Panel -->
-                        <VBox spacing="16.0" alignment="TOP_LEFT" style="-fx-background-color: linear-gradient(to bottom, #020617, #020617 60%, #020617); -fx-background-radius: 18; -fx-padding: 20 24; -fx-border-color: #1f2937; -fx-border-radius: 18; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 20, 0.2, 0, 10);">
-                            <Label text="Host - Share your screen" style="-fx-font-size: 14px; -fx-text-fill: #e5e7eb; -fx-font-weight: 600;" />
+                        <VBox alignment="TOP_LEFT" spacing="16.0" style="-fx-background-color: linear-gradient(to bottom right, rgba(16, 185, 129, 0.32), rgba(5, 150, 105, 0.24)); -fx-background-radius: 26; -fx-padding: 26 32; -fx-border-color: rgba(110, 231, 183, 0.9); -fx-border-width: 1.2; -fx-border-radius: 26; -fx-effect: dropshadow(gaussian, rgba(6, 95, 70, 0.9), 30, 0.35, 0, 14);">
+                            <Label style="-fx-font-size: 14px; -fx-text-fill: #ecfdf5; -fx-font-weight: 600;" text="Host - Share your screen" />
 
-                            <VBox spacing="8.0" alignment="CENTER_LEFT" maxWidth="420.0">
-                                <Label text="Network Interfaces" style="-fx-text-fill: #9ca3af;" />
-                                <TextArea fx:id="ipTextArea" editable="false" prefRowCount="3" wrapText="true" style="-fx-background-color: #020617; -fx-text-fill: #38bdf8; -fx-border-color: #1f2937; -fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 8 10;" />
+                            <VBox alignment="CENTER_LEFT" maxWidth="420.0" spacing="8.0">
+                                <Label style="-fx-text-fill: #a5f3fc;" text="Network Interfaces" />
+                                <TextArea fx:id="ipTextArea" editable="false" prefRowCount="3" style="-fx-background-color: linear-gradient(to right, rgba(15, 118, 110, 0.35), rgba(8, 47, 73, 0.55)); -fx-text-fill: #000000; -fx-border-color: rgba(34, 211, 238, 0.9); -fx-border-width: 1.1; -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 16; -fx-font-family: 'Consolas', 'Fira Code', monospace; -fx-font-size: 12px; -fx-highlight-fill: rgba(56, 189, 248, 0.45); -fx-highlight-text-fill: #0f172a;" styleClass="-fx" wrapText="false" />
                             </VBox>
 
                             <GridPane hgap="12.0" vgap="12.0">
@@ -63,23 +73,23 @@
                                     <RowConstraints minHeight="30.0" />
                                 </rowConstraints>
 
-                                <Label text="Session Password" GridPane.columnIndex="0" GridPane.rowIndex="0" style="-fx-text-fill: #9ca3af;" />
+                                <Label style="-fx-text-fill: #bbf7d0;" text="Session Password" GridPane.columnIndex="0" GridPane.rowIndex="0" />
                                 <HBox spacing="8.0" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                                    <TextField fx:id="hostPasswordField" editable="false" style="-fx-background-color: #020617; -fx-text-fill: #e5e7eb; -fx-background-radius: 10; -fx-border-color: #374151; -fx-border-radius: 10; -fx-padding: 6 10;" />
-                                    <Button fx:id="regenerateBtn" text="Regenerate" style="-fx-background-color: #111827; -fx-text-fill: #e5e7eb; -fx-background-radius: 999; -fx-padding: 6 16; -fx-font-size: 12px;" />
+                                    <TextField fx:id="hostPasswordField" editable="false" style="-fx-background-color: rgba(15, 23, 42, 0.45); -fx-text-fill: #ecfdf5; -fx-background-radius: 18; -fx-border-color: rgba(45, 212, 191, 0.9); -fx-border-width: 1.1; -fx-border-radius: 18; -fx-padding: 6 14;" />
+                                    <Button fx:id="regenerateBtn" style="-fx-background-color: rgba(6, 95, 70, 0.9); -fx-text-fill: #ecfdf5; -fx-background-radius: 999; -fx-padding: 6 18; -fx-font-size: 12px;" text="Regenerate" />
                                 </HBox>
 
-                                <Label text="Session ID" GridPane.columnIndex="0" GridPane.rowIndex="1" style="-fx-text-fill: #9ca3af;" />
-                                <TextField fx:id="hostIdField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="1" style="-fx-background-color: #020617; -fx-text-fill: #e5e7eb; -fx-background-radius: 10; -fx-border-color: #374151; -fx-border-radius: 10; -fx-padding: 6 10;" />
+                                <Label style="-fx-text-fill: #bbf7d0;" text="Session ID" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                <TextField fx:id="hostIdField" editable="false" style="-fx-background-color: rgba(15, 23, 42, 0.45); -fx-text-fill: #ecfdf5; -fx-background-radius: 18; -fx-border-color: rgba(45, 212, 191, 0.9); -fx-border-width: 1.1; -fx-border-radius: 18; -fx-padding: 6 14;" GridPane.columnIndex="1" GridPane.rowIndex="1" />
 
 
                             </GridPane>
 
-                            <HBox spacing="12.0" alignment="CENTER">
-                                <Button fx:id="stopBtn" disable="true" text="Stop" style="-fx-background-color: #111827; -fx-text-fill: #9ca3af; -fx-background-radius: 999; -fx-padding: 8 18; -fx-font-size: 13px;" />
-                                <Button fx:id="startBtn" text="Start Sharing" style="-fx-background-color: linear-gradient(to right, #16a34a, #22c55e); -fx-text-fill: #ffffff; -fx-background-radius: 999; -fx-padding: 8 22; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                            <HBox alignment="CENTER" spacing="12.0">
+                                <Button fx:id="stopBtn" disable="true" style="-fx-background-color: rgba(15, 23, 42, 0.7); -fx-text-fill: #9ca3af; -fx-background-radius: 999; -fx-padding: 8 18; -fx-font-size: 13px;" text="Stop" />
+                                <Button fx:id="startBtn" style="-fx-background-color: linear-gradient(to right, #22c55e, #a3e635); -fx-text-fill: #ffffff; -fx-background-radius: 999; -fx-padding: 8 22; -fx-font-size: 13px; -fx-font-weight: 600; -fx-effect: dropshadow(gaussian, rgba(34, 197, 94, 0.7), 20, 0.35, 0, 4);" text="Start Sharing" />
                             </HBox>
-                            <Label fx:id="statusLabel" text="Idle" style="-fx-text-fill: #9ca3af;" />
+                            <Label fx:id="statusLabel" style="-fx-text-fill: #d1fae5;" text="Idle" />
                         </VBox>
                     </HBox>
                 </VBox>
@@ -87,7 +97,6 @@
         </ScrollPane>
     </center>
     <padding>
-        <Insets top="24.0" right="24.0" bottom="24.0" left="24.0" />
+        <Insets bottom="24.0" left="24.0" right="24.0" top="24.0" />
     </padding>
 </BorderPane>
-
