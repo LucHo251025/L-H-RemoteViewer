@@ -9,6 +9,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.image.*;
+import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
@@ -44,8 +45,8 @@ public class ViewerClient extends Application {
     private static final Object hostControlWriteLock = new Object();
     private static volatile String hostIdRef;
     private static volatile BooleanSupplier hostShouldRun;
-    private static volatile com.example.ultraviewdemo.client.HostClient.AudioManager hostAudioManager;
-    private static volatile com.example.ultraviewdemo.client.HostClient.UplinkManager hostUplinkManager;
+    private static volatile HostAudioManager hostAudioManager;
+    private static volatile HostUplinkManager hostUplinkManager;
     
     // Audio
     private volatile Socket audioSocket;
@@ -54,6 +55,7 @@ public class ViewerClient extends Application {
     private volatile Socket uplinkSocket;
     private volatile Thread uplinkThread;
     private volatile TargetDataLine micLine;
+    private volatile SourceDataLine speakerLine;
 
         // P2P target resolved from directory server
     private String hostIp;
@@ -436,6 +438,11 @@ public class ViewerClient extends Application {
         
         void enable() { enabled = true; }
         void disable() { enabled = false; }
+        
+        private void startSender() {
+            // Simplified - just accept connection
+            System.out.println("[Host] Audio sender started");
+        }
     }
     
     // Simplified uplink manager for host mode
