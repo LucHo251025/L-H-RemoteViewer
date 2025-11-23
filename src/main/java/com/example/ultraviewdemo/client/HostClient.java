@@ -573,9 +573,18 @@ public class HostClient extends Application {
         } catch (Exception ignore) {}
         // Initialize independent Host chat window and wire send handler
         Platform.runLater(() -> {
-            HostChatWindow.initIfNeeded();
-            HostChatWindow.setOnSend(HostClient::sendChatFromUI);
-            HostChatWindow.show();
+            try {
+                System.out.println("[HostClient] Initializing HostChatWindow...");
+                HostChatWindow.initIfNeeded();
+                System.out.println("[HostClient] Setting onSend callback...");
+                HostChatWindow.setOnSend(HostClient::sendChatFromUI);
+                System.out.println("[HostClient] Showing HostChatWindow...");
+                HostChatWindow.show();
+                System.out.println("[HostClient] HostChatWindow initialized successfully");
+            } catch (Exception e) {
+                System.err.println("[HostClient] Error initializing HostChatWindow: " + e.getMessage());
+                e.printStackTrace();
+            }
         });
         stage.show();
     }
