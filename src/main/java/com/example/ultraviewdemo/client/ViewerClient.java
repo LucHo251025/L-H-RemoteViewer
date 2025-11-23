@@ -339,6 +339,7 @@ public class ViewerClient extends Application {
                     Platform.runLater(() -> {
                         try {
                             HostChatWindow.initIfNeeded();
+                            HostChatWindow.setOnSend(this::sendChatFromHostUI);
                             HostChatWindow.show();
                             HostChatWindow.addMessage("Viewer", text);
                         } catch (Exception e) {
