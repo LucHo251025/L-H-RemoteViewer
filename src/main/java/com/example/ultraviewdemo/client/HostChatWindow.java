@@ -50,12 +50,19 @@ public class HostChatWindow {
             // Wire actions
             Runnable sendAction = () -> {
                 String text = input.getText();
+                System.out.println("[HostChatWindow] Send button pressed, text: '" + text + "'");
                 if (text == null) return;
                 text = text.trim();
                 if (text.isEmpty()) return;
                 input.clear();
                 addMessage("Host", text);
-                if (onSend != null) onSend.accept(text);
+                System.out.println("[HostChatWindow] onSend callback is: " + (onSend != null ? "SET" : "NULL"));
+                if (onSend != null) {
+                    onSend.accept(text);
+                    System.out.println("[HostChatWindow] onSend.accept() called");
+                } else {
+                    System.err.println("[HostChatWindow] ERROR: onSend callback is NULL!");
+                }
             };
             sendBtn.setOnAction(e -> sendAction.run());
             input.setOnAction(e -> sendAction.run());
@@ -74,6 +81,7 @@ public class HostChatWindow {
     }
 
     public static void setOnSend(Consumer<String> handler) {
+        System.out.println("[HostChatWindow] setOnSend called with handler: " + (handler != null ? "NOT NULL" : "NULL"));
         onSend = handler;
     }
 
