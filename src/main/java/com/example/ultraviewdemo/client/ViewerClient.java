@@ -138,9 +138,10 @@
                     String trimmed = (text == null) ? "" : text.trim();
                     if (trimmed.isEmpty()) return;
                     if (controlSocket == null || controlSocket.isClosed()) {
-                        System.err.println("Cannot send viewer chat: controlSocket is null or closed");
+                        System.err.println("[Viewer] Cannot send viewer chat: controlSocket is null or closed");
                         return;
                     }
+                    System.out.println("[Viewer] Preparing to send chat to host: '" + trimmed + "'");
                     sendControl("CHAT:" + trimmed);
                     // Hiển thị tin nhắn của chính mình một lần
                     Platform.runLater(() -> ctrl.addChatMessage("You", trimmed));
@@ -218,14 +219,14 @@
         private void startControlConnection() {
             new Thread(() -> {
                 try {
-                    System.out.println("Attempting to connect to control at " + hostIp + ":" + hostControlPort);
+                    System.out.println("[Viewer] Attempting to connect to control at " + hostIp + ":" + hostControlPort);
                     controlSocket = new Socket(hostIp, hostControlPort);
                     viewerControlModel = new MessageModel(Constant.ACTION_VIEWER_CONTROLLER, hostId);
                     viewerControlModel.setPartner_password(password);
                     viewerControlModel.setPartner_id(hostId);
                     SocketMethodHelpers.sendMessage(controlSocket, viewerControlModel);
 
-                    System.out.println("Control connection established successfully!");
+                    System.out.println("[Viewer] Control connection established successfully!");
 
                     // Start background listener for chat messages from host
                     Thread reader = new Thread(() -> {
@@ -235,16 +236,16 @@
                                     MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
                                     if (incoming == null) break;
                                     String msg = incoming.getMessage();
-                                    System.out.println("Received message: " + msg); // Debug log
+                                    System.out.println("[Viewer] Received control message from host: " + msg); // Debug log
                                     if (msg != null) {
                                         if (msg.startsWith("CHAT:")) {
                                             String text = msg.length() > 5 ? msg.substring(5) : "";
-                                            System.out.println("Processing chat message: " + text); // Debug log
+                                            System.out.println("[Viewer] Processing chat message from host: '" + text + "'"); // Debug log
                                             Platform.runLater(() -> {
                                                 if (uiController != null) {
                                                     uiController.addChatMessage("Host", text);
                                                 } else {
-                                                    System.err.println("uiController is null when trying to display chat message");
+                                                    System.err.println("[Viewer] uiController is null when trying to display chat message");
                                                 }
                                             });
                                         } else if (msg.startsWith("AUDIO:") || msg.startsWith("AUDIO_UP:")) {
@@ -252,7 +253,7 @@
                                         }
                                     }
                                 } catch (Exception e) {
-                                    System.err.println("Error in control message reader: " + e.getMessage());
+                                    System.err.println("[Viewer] Error in control message reader: " + e.getMessage());
                                     e.printStackTrace();
                                     break; // Thoát vòng lặp nếu có lỗi
                                 }
@@ -264,7 +265,7 @@
                     reader.setDaemon(true);
                     reader.start();
                 } catch (Exception e) {
-                    System.err.println("Failed to establish control connection: " + e.getMessage());
+                    System.err.println("[Viewer] Failed to establish control connection: " + e.getMessage());
                     e.printStackTrace();
                 }
             }, "ViewerControlConnect").start();
@@ -272,9 +273,13 @@
 
         private void sendControl(String message) {
             try {
-                if (viewerControlModel == null || controlSocket == null || !controlSocket.isConnected()) return;
+                if (viewerControlModel == null || controlSocket == null || !controlSocket.isConnected()) {
+                    System.err.println("[Viewer] sendControl aborted: model or socket invalid. model=" + viewerControlModel + ", socket=" + controlSocket);
+                    return;
+                }
                 synchronized (controlWriteLock) {
                     viewerControlModel.setMessage(message);
+                    System.out.println("[Viewer] sendControl() sending message over control socket: '" + message + "'");
                     SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
                 }
             } catch (Exception ignore) {}
