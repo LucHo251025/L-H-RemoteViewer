@@ -84,14 +84,17 @@ public class UltraViewController implements Initializable {
     @FXML
     private Button openSidebarBtn; // button inside leftCollapsed
     @FXML
+    private HBox topBar;
+    @FXML
     private HBox bottomBar;
 
     // Audio state for toggle button (default OFF for clarity/stability)
     private boolean isAudioOn = false;
     private Consumer<Boolean> onAudioToggle; // callback to Viewer to start/stop audio
 
-    // Stage reference for fullscreen toggling
+    // Stage reference and listener flag for fullscreen toggling
     private Stage stage;
+    private boolean fullscreenListenerInitialized = false;
 
     // Chat UI
     @FXML private ListView<ChatMessage> chatListView;
@@ -248,6 +251,32 @@ public class UltraViewController implements Initializable {
         }
 
         javafx.stage.Stage localStage = (javafx.stage.Stage) window;
+        this.stage = localStage;
+
+        // Install a listener once so that if user exits fullscreen via ESC,
+        // the chrome (sidebars, bars) is restored correctly.
+        if (!fullscreenListenerInitialized) {
+            fullscreenListenerInitialized = true;
+            localStage.fullScreenProperty().addListener((obs, wasFull, isFull) -> {
+                boolean showChrome = !isFull;
+                if (leftPane != null) {
+                    leftPane.setVisible(showChrome);
+                    leftPane.setManaged(showChrome);
+                }
+                if (bottomBar != null) {
+                    bottomBar.setVisible(showChrome);
+                    bottomBar.setManaged(showChrome);
+                }
+                if (topBar != null) {
+                    topBar.setVisible(showChrome);
+                    topBar.setManaged(showChrome);
+                }
+                if (fullscreenButton != null) {
+                    fullscreenButton.setText(isFull ? "Exit Fullscreen" : "Fullscreen");
+                }
+            });
+        }
+
         boolean newState = !localStage.isFullScreen();
         localStage.setFullScreen(newState);
 
@@ -263,6 +292,10 @@ public class UltraViewController implements Initializable {
         if (bottomBar != null) {
             bottomBar.setVisible(showChrome);
             bottomBar.setManaged(showChrome);
+        }
+        if (topBar != null) {
+            topBar.setVisible(showChrome);
+            topBar.setManaged(showChrome);
         }
     }
 

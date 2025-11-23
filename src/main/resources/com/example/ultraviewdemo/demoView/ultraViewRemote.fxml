@@ -83,7 +83,7 @@
     <center>
         <VBox>
             <!-- Top Bar -->
-            <HBox alignment="CENTER_LEFT" style="-fx-background-color: #ffffff; -fx-padding: 12 16; -fx-spacing: 12; -fx-border-color: #e5e7eb; -fx-border-width: 0 0 1 0;">
+            <HBox fx:id="topBar" alignment="CENTER_LEFT" style="-fx-background-color: #ffffff; -fx-padding: 12 16; -fx-spacing: 12; -fx-border-color: #e5e7eb; -fx-border-width: 0 0 1 0;">
                 <Button style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 14; -fx-padding: 6 12;" text="CONNECTED" />
                 <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="(192.168.1.100)" />
 
