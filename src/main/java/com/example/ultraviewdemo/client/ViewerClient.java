@@ -223,11 +223,14 @@ public class ViewerClient extends Application {
         }
         
         // Start control accept
+        System.out.println("[Host] About to call startHostControlAccept...");
         startHostControlAccept(controlServer, hostId, password, shouldRun::get, audioManager, uplinkManager);
         
         // Start screen sharing
+        System.out.println("[Host] Waiting for stream connection...");
         try (Socket streamSocket = streamServer.accept()) {
             System.out.println("[Host] Stream connection accepted from: " + streamSocket.getRemoteSocketAddress());
+            System.out.println("[Host] Both control and stream connections established!");
             Robot robot = new Robot();
             Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
             DataOutputStream out = new DataOutputStream(streamSocket.getOutputStream());
@@ -270,6 +273,7 @@ public class ViewerClient extends Application {
     }
     
     private void startHostControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun, HostAudioManager audioManager, HostUplinkManager uplinkManager) {
+        System.out.println("[Host] startHostControlAccept() called - waiting for viewer connection...");
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
                 System.out.println("[Host] Control connection accepted from viewer: " + controlSocket.getRemoteSocketAddress());
