@@ -277,6 +277,11 @@ public class HostClient extends Application {
                         }
                     });
                     break;
+                case "CHAT_ACK":
+                    // Acknowledgement from viewer that it received and processed a chat from host.
+                    String ackText = command.length() > 9 ? command.substring(9) : "";
+                    System.out.println("[Host] Received CHAT_ACK from viewer for: '" + ackText + "'");
+                    break;
             }
         } catch (Exception e) {
             System.err.println("Error handling control command: " + e.getMessage());

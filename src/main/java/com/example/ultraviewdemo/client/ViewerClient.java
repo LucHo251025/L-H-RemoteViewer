@@ -248,6 +248,13 @@
                                                     System.err.println("[Viewer] uiController is null when trying to display chat message");
                                                 }
                                             });
+                                            // Send ACK back to host so it can log that viewer received the chat
+                                            try {
+                                                sendControl("CHAT_ACK:" + text);
+                                            } catch (Exception e) {
+                                                System.err.println("[Viewer] Failed to send CHAT_ACK: " + e.getMessage());
+                                                e.printStackTrace();
+                                            }
                                         } else if (msg.startsWith("AUDIO:") || msg.startsWith("AUDIO_UP:")) {
                                             // Xử lý các lệnh âm thanh khác nếu cần
                                         }
