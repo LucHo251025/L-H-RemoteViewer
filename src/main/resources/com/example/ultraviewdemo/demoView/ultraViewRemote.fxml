@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.String?>
-<?import javafx.collections.FXCollections?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.Separator?>
@@ -35,12 +32,6 @@
                 </VBox>
                 <Region HBox.hgrow="ALWAYS" />
                 <Button fx:id="collapseSidebarBtn" style="-fx-background-color: transparent; -fx-text-fill: #6b7280; -fx-font-size: 16px; -fx-padding: 4 6;" text="☰" />
-            </HBox>
-
-            <!-- Tabs -->
-            <HBox alignment="CENTER" prefHeight="42.0" prefWidth="300.0" spacing="8.0" style="-fx-padding: 0 0 20 0;">
-                <Button style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: 600; -fx-background-radius: 10; -fx-padding: 8 14;" text="Connections" />
-                <Button style="-fx-background-color: #eef2f7; -fx-text-fill: #374151; -fx-font-weight: 500; -fx-background-radius: 10; -fx-padding: 8 14;" text="Settings" />
             </HBox>
 
             <!-- Chat Panel -->
@@ -85,42 +76,17 @@
             <!-- Top Bar -->
             <HBox fx:id="topBar" alignment="CENTER_LEFT" style="-fx-background-color: #ffffff; -fx-padding: 12 16; -fx-spacing: 12; -fx-border-color: #e5e7eb; -fx-border-width: 0 0 1 0;">
                 <Button style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 14; -fx-padding: 6 12;" text="CONNECTED" />
-                <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="(192.168.1.100)" />
-
-                <!-- Quality Dropdown -->
-                <ComboBox fx:id="qualityCombo" promptText="Quality" style="-fx-background-radius: 8; -fx-padding: 4 8;">
-                    <items>
-                        <FXCollections fx:factory="observableArrayList">
-                            <String fx:value="Low" />
-                            <String fx:value="Medium" />
-                            <String fx:value="High" />
-                        </FXCollections>
-                    </items>
-                </ComboBox>
 
                 <!-- Display Controls -->
                 <Button fx:id="fullscreenButton" style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-padding: 6 12;" text="Fullscreen" />
 
-                <!-- Audio Controls -->
+                      <!-- Audio Controls -->
                 <Button fx:id="audioButton" style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-padding: 6 12; -fx-font-weight: 700;" text="🔊 Audio On" />
-
-                <!-- Performance Metrics -->
-                <HBox alignment="CENTER" spacing="10.0">
-                    <Region prefHeight="0.0" prefWidth="0.0" />
-                    <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="15ms" />
-                    <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="60 FPS" />
-                    <Label style="-fx-text-fill: #6b7280; -fx-font-size: 12px;" text="1.2 MB/s" />
-                    <Region prefHeight="0.0" prefWidth="0.0" />
-                </HBox>
-
-                <!-- Action Buttons -->
-                <Button style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: #374151; -fx-padding: 6 12;" text="Security" />
-                <Button style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: #374151; -fx-padding: 6 12;" text="Reconnect" />
                 <Button fx:id="disconnectBtn" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 6 12;" text="Disconnect" />
             </HBox>
 
             <!-- Remote Desktop View -->
-            <StackPane fx:id="remoteContainer" VBox.vgrow="ALWAYS" style="-fx-background-color: #eef2f7; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 0);">
+            <StackPane fx:id="remoteContainer" style="-fx-background-color: #eef2f7; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 0);" VBox.vgrow="ALWAYS">
                 <!-- Blue Desktop Background -->
                 <Rectangle height="600.0" style="-fx-fill: #ffffff; -fx-stroke: #e5e7eb; -fx-stroke-width: 1;" width="800.0" />
 
