@@ -129,12 +129,12 @@ public class UltraViewController implements Initializable {
                     }
                     Label bubble = new Label(item.text);
                     bubble.setWrapText(true);
-                    bubble.setMaxWidth(180);
+                    bubble.setMaxWidth(200);
                     bubble.setStyle(item.self
-                            ? "-fx-background-color: #DCFCE7; -fx-text-fill: #065F46; -fx-padding: 8 10; -fx-background-radius: 12;"
-                            : "-fx-background-color: #E5E7EB; -fx-text-fill: #111827; -fx-padding: 8 10; -fx-background-radius: 12;");
+                            ? "-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 12; -fx-background-radius: 16; -fx-font-weight: 500;"
+                            : "-fx-background-color: #f3f4f6; -fx-text-fill: #111827; -fx-padding: 10 12; -fx-background-radius: 16; -fx-font-weight: 500;");
                     Label name = new Label(item.self ? "You" : (item.sender != null ? item.sender : "Peer"));
-                    name.setStyle("-fx-font-size: 10px; -fx-text-fill: #6B7280;");
+                    name.setStyle("-fx-font-size: 11px; -fx-text-fill: #6b7280; -fx-font-weight: 600;");
                     VBox msgBox = new VBox(4, name, bubble);
                     HBox row = new HBox();
                     Region spacer = new Region();
@@ -142,9 +142,11 @@ public class UltraViewController implements Initializable {
                     if (item.self) {
                         row.getChildren().addAll(spacer, msgBox);
                         row.setAlignment(Pos.CENTER_RIGHT);
+                        msgBox.setAlignment(Pos.CENTER_RIGHT);
                     } else {
                         row.getChildren().addAll(msgBox, spacer);
                         row.setAlignment(Pos.CENTER_LEFT);
+                        msgBox.setAlignment(Pos.CENTER_LEFT);
                     }
                     setGraphic(row);
                     setText(null);
