@@ -225,6 +225,7 @@ public class ViewerClient extends Application {
         // Start control accept
         System.out.println("[Host] About to call startHostControlAccept...");
         startHostControlAccept(controlServer, hostId, password, shouldRun::get, audioManager, uplinkManager);
+        System.out.println("[Host] startHostControlAccept called, now waiting for stream...");
         
         // Start screen sharing
         System.out.println("[Host] Waiting for stream connection...");
@@ -274,21 +275,65 @@ public class ViewerClient extends Application {
     
     private void startHostControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun, HostAudioManager audioManager, HostUplinkManager uplinkManager) {
         System.out.println("[Host] startHostControlAccept() called - waiting for viewer connection...");
+        System.out.println("[Host] Control server listening on port: " + controlServer.getLocalPort());
+        System.out.println("[Host] Control server is bound: " + controlServer.isBound());
+        System.out.println("[Host] Control server is closed: " + controlServer.isClosed());
+        
         new Thread(() -> {
-            try (Socket controlSocket = controlServer.accept()) {
+            try {
+                System.out.println("[Host] Thread started, waiting for controlSocket.accept()...");
+                Socket controlSocket = controlServer.accept();
                 System.out.println("[Host] Control connection accepted from viewer: " + controlSocket.getRemoteSocketAddress());
-                hostControlSocketRef = controlSocket;
+                System.out.println("[Host] Socket connected: " + controlSocket.isConnected());
+                System.out.println("[Host] Socket closed: " + controlSocket.isClosed());
                 
-                // Ensure HostChatWindow callback is set when viewer connects
+                // GÁN SOCKET VÀ HIỂN THỊ CHAT NGAY LẬP TỨC
+                hostControlSocketRef = controlSocket;
+                System.out.println("[Host] hostControlSocketRef assigned successfully");
+                
+                // HIỂN THỊ HOST CHAT WINDOW NGAY KHI KẾT NỐI THÀNH CÔNG
+                try {
+                    System.out.println("[Host] === SHOWING CHAT WINDOW IMMEDIATELY ===");
+                    
+                    // Test đơn giản: tạo và show window
+                    Platform.runLater(() -> {
+                        try {
+                            System.out.println("[Host] Platform.runLater: Creating chat window...");
+                            HostChatWindow.initIfNeeded();
+                            HostChatWindow.setOnSend(this::sendChatFromHostUI);
+                            HostChatWindow.show();
+                            HostChatWindow.addMessage("System", "Viewer connected successfully!");
+                            System.out.println("[Host] Platform.runLater: Chat window commands sent");
+                        } catch (Exception e) {
+                            System.err.println("[Host] Platform.runLater ERROR: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    });
+                    
+                    System.out.println("[Host] === CHAT WINDOW SHOULD BE VISIBLE NOW ===");
+                } catch (Exception e) {
+                    System.err.println("[Host] ERROR showing HostChatWindow: " + e.getMessage());
+                    e.printStackTrace();
+                }
+                
+                // Cũng thử với Platform.runLater để đảm bảo
                 Platform.runLater(() -> {
                     try {
-                        HostChatWindow.initIfNeeded();
-                        HostChatWindow.setOnSend(this::sendChatFromHostUI);
+                        Thread.sleep(200); // Delay để UI sẵn sàng
+                        System.out.println("[Host] === BACKUP: Showing chat via Platform.runLater ===");
+                        
+                        // Test với Alert trước để đảm bảo JavaFX hoạt động
+                        Alert testAlert = new Alert(Alert.AlertType.INFORMATION);
+                        testAlert.setTitle("Test");
+                        testAlert.setHeaderText(null);
+                        testAlert.setContentText("Viewer connected! Chat window opening...");
+                        testAlert.showAndWait();
+                        
                         HostChatWindow.show();
-                        HostChatWindow.addMessage("System", "Viewer connected successfully!");
-                        System.out.println("[Host] HostChatWindow shown when viewer connected");
+                        HostChatWindow.addMessage("System", "Chat window ready!");
+                        System.out.println("[Host] === BACKUP COMPLETED ===");
                     } catch (Exception e) {
-                        System.err.println("[Host] Error setting callback on connect: " + e.getMessage());
+                        System.err.println("[Host] Error in Platform.runLater backup: " + e.getMessage());
                     }
                 });
                 
@@ -326,6 +371,13 @@ public class ViewerClient extends Application {
                 // Keep this thread alive to maintain connection
                 while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
                     Thread.sleep(100);
+                }
+                
+                // Close socket manually when done
+                try {
+                    controlSocket.close();
+                } catch (Exception e) {
+                    System.err.println("[Host] Error closing control socket: " + e.getMessage());
                 }
                 
             } catch (Exception e) {
