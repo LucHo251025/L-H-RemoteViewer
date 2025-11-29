@@ -17,7 +17,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane style="-fx-background-color: linear-gradient(to bottom, #1d0f6b, #0b206f 40%, #031b4a); -fx-text-fill: #e5e7eb; -fx-font-family: 'Segoe UI', 'Arial', sans-serif;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.ultraviewdemo.client.ConnectHostController">
+<BorderPane style="-fx-background-color: linear-gradient(to bottom, #123c93, #1155c6 40%, #0b3b8a); -fx-text-fill: #e5e7eb; -fx-font-family: 'Segoe UI', 'Arial', sans-serif;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.ultraviewdemo.client.ConnectHostController">
     <center>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" pannable="true" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="AS_NEEDED">
             <content>
@@ -41,7 +41,7 @@
 
                     <HBox alignment="TOP_CENTER" spacing="24.0">
                         <!-- Connect Panel -->
-                        <VBox alignment="TOP_LEFT" spacing="16.0" style="-fx-background-color: linear-gradient(to bottom right, rgba(37, 99, 235, 0.32), rgba(59, 130, 246, 0.22)); -fx-background-radius: 26; -fx-padding: 26 32; -fx-border-color: rgba(191, 219, 254, 0.7); -fx-border-width: 1.2; -fx-border-radius: 26; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.8), 30, 0.3, 0, 14);">
+                        <VBox alignment="TOP_LEFT" spacing="16.0" style="-fx-background-color: linear-gradient(to bottom right, rgba(59, 130, 246, 0.32), rgba(191, 219, 254, 0.24)); -fx-background-radius: 26; -fx-padding: 26 32; -fx-border-color: rgba(219, 234, 254, 0.9); -fx-border-width: 1.2; -fx-border-radius: 26; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.55), 22, 0.25, 0, 10);">
                             <Label style="-fx-font-size: 14px; -fx-text-fill: #e5e7eb; -fx-font-weight: 600;" text="Connect to a Host" />
                             <GridPane hgap="12.0" vgap="12.0">
                                 <columnConstraints>
@@ -66,7 +66,7 @@
                         </VBox>
 
                         <!-- Host Panel -->
-                        <VBox alignment="TOP_LEFT" spacing="16.0" style="-fx-background-color: linear-gradient(to bottom right, rgba(16, 185, 129, 0.32), rgba(5, 150, 105, 0.24)); -fx-background-radius: 26; -fx-padding: 26 32; -fx-border-color: rgba(110, 231, 183, 0.9); -fx-border-width: 1.2; -fx-border-radius: 26; -fx-effect: dropshadow(gaussian, rgba(6, 95, 70, 0.9), 30, 0.35, 0, 14);">
+                        <VBox alignment="TOP_LEFT" spacing="16.0" style="-fx-background-color: linear-gradient(to bottom right, rgba(45, 212, 191, 0.3), rgba(167, 243, 208, 0.24)); -fx-background-radius: 26; -fx-padding: 26 32; -fx-border-color: rgba(187, 247, 208, 0.95); -fx-border-width: 1.2; -fx-border-radius: 26; -fx-effect: dropshadow(gaussian, rgba(5, 95, 70, 0.65), 22, 0.3, 0, 10);">
                             <Label style="-fx-font-size: 14px; -fx-text-fill: #ecfdf5; -fx-font-weight: 600;" text="Host - Share your screen" />
 
                             <VBox alignment="CENTER_LEFT" maxWidth="420.0" spacing="8.0">

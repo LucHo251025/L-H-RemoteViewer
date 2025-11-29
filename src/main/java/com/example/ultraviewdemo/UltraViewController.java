@@ -95,6 +95,11 @@ public class UltraViewController implements Initializable {
     // Stage reference and listener flag for fullscreen toggling
     private Stage stage;
     private boolean fullscreenListenerInitialized = false;
+    private double prevWindowX;
+    private double prevWindowY;
+    private double prevWindowWidth;
+    private double prevWindowHeight;
+    private boolean windowBoundsSaved = false;
 
     // Chat UI
     @FXML private ListView<ChatMessage> chatListView;
@@ -276,10 +281,27 @@ public class UltraViewController implements Initializable {
                 if (fullscreenButton != null) {
                     fullscreenButton.setText(isFull ? "Exit Fullscreen" : "Fullscreen");
                 }
+
+                if (!isFull && windowBoundsSaved && stage != null) {
+                    stage.setX(prevWindowX);
+                    stage.setY(prevWindowY);
+                    stage.setWidth(prevWindowWidth);
+                    stage.setHeight(prevWindowHeight);
+                    windowBoundsSaved = false;
+                }
             });
         }
 
         boolean newState = !localStage.isFullScreen();
+
+        if (newState && !windowBoundsSaved) {
+            prevWindowX = localStage.getX();
+            prevWindowY = localStage.getY();
+            prevWindowWidth = localStage.getWidth();
+            prevWindowHeight = localStage.getHeight();
+            windowBoundsSaved = true;
+        }
+
         localStage.setFullScreen(newState);
 
         if (fullscreenButton != null) {
