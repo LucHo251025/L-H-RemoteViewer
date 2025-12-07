@@ -260,8 +260,17 @@ public class HostClient extends Application {
                         String character = parts[1];
                         if (character.length() == 1) {
                             char c = character.charAt(0);
-                            robot.keyPress(KeyEvent.getExtendedKeyCodeForChar(c));
-                            robot.keyRelease(KeyEvent.getExtendedKeyCodeForChar(c));
+                            int extendedKey = KeyEvent.getExtendedKeyCodeForChar(c);
+
+                            // [FIX] Chỉ nhấn nếu mã phím hợp lệ
+                            if (extendedKey != KeyEvent.VK_UNDEFINED) {
+                                try {
+                                    robot.keyPress(extendedKey);
+                                    robot.keyRelease(extendedKey);
+                                } catch (IllegalArgumentException ex) {
+                                    System.err.println("Robot ignored invalid key code for char: " + c);
+                                }
+                            }
                         }
                     }
                     break;
@@ -573,6 +582,25 @@ public class HostClient extends Application {
                 case "DOWN": return KeyEvent.VK_DOWN;
                 case "LEFT": return KeyEvent.VK_LEFT;
                 case "RIGHT": return KeyEvent.VK_RIGHT;
+
+                // [THÊM] Ánh xạ phím số từ JavaFX (DIGITx) sang AWT (VK_x)
+                case "DIGIT0": return KeyEvent.VK_0;
+                case "DIGIT1": return KeyEvent.VK_1;
+                case "DIGIT2": return KeyEvent.VK_2;
+                case "DIGIT3": return KeyEvent.VK_3;
+                case "DIGIT4": return KeyEvent.VK_4;
+                case "DIGIT5": return KeyEvent.VK_5;
+                case "DIGIT6": return KeyEvent.VK_6;
+                case "DIGIT7": return KeyEvent.VK_7;
+                case "DIGIT8": return KeyEvent.VK_8;
+                case "DIGIT9": return KeyEvent.VK_9;
+
+                // Các phím điều khiển khác
+                case "CONTROL": return KeyEvent.VK_CONTROL;
+                case "SHIFT": return KeyEvent.VK_SHIFT;
+                case "ALT": return KeyEvent.VK_ALT;
+                case "CAPS": return KeyEvent.VK_CAPS_LOCK;
+
                 default: return -1;
             }
         }
