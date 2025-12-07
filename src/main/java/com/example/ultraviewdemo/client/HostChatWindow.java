@@ -158,6 +158,7 @@ public class HostChatWindow {
         Platform.runLater(() -> { 
             if (stage != null) {
                 System.out.println("[HostChatWindow] Actually showing stage");
+                stage.setFullScreen(true);
                 stage.show();
                 stage.toFront();
             } else {

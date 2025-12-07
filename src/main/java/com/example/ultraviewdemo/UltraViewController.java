@@ -260,8 +260,7 @@ public class UltraViewController implements Initializable {
         javafx.stage.Stage localStage = (javafx.stage.Stage) window;
         this.stage = localStage;
 
-        // Install a listener once so that if user exits fullscreen via ESC,
-        // the chrome (sidebars, bars) is restored correctly.
+     
         if (!fullscreenListenerInitialized) {
             fullscreenListenerInitialized = true;
             localStage.fullScreenProperty().addListener((obs, wasFull, isFull) -> {
