@@ -113,6 +113,24 @@ public class HostClient extends Application {
                 System.out.println("[Host] Control connection accepted from viewer: " + controlSocket.getRemoteSocketAddress());
                 controlSocketRef = controlSocket;
                 currentControlSocket = controlSocket;
+
+
+                Platform.runLater(() -> {
+                    try {
+                        System.out.println("[Host] Connection established - Auto opening Chat Window");
+                        HostChatWindow.initIfNeeded();
+                        // Đảm bảo nút gửi hoạt động
+                        HostChatWindow.setOnSend(HostClient::sendChatFromUI);
+                        HostChatWindow.show();
+                        // Thêm thông báo hệ thống
+                        HostChatWindow.addMessage("System", "Viewer connected successfully!");
+                    } catch (Exception e) {
+                        System.err.println("[Host] Error auto-opening chat: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                });
+                // =======================================================================
+
                 Robot robot = new Robot();
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
                 try {
@@ -121,39 +139,24 @@ public class HostClient extends Application {
                     SocketMethodHelpers.sendMessage(controlSocket, info);
                 } catch (Exception ignore) {}
 
-                // ===== THÊM PHẦN NÀY: Thread để nhận tin nhắn từ Viewer =====
-                //Thread readerThread = new Thread(() -> {
-                    try {
-                        while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
-                            try {
-                                MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
-                                if (incoming == null) {
-                                    System.out.println("[Host] Incoming control message is null, breaking reader loop");
-                                    break;
-                                }
-
-                                String msg = incoming.getMessage();
-                                System.out.println("[Host] Host received control message: " + msg);
-
-                                if (msg != null) {
-                                    handleControlCommand(robot, msg, screenRect, audioManager, uplinkManager, controlSocket, hostId);
-                                }
-                            } catch (Exception e) {
-                                System.err.println("[Host] Error reading control message: " + e.getMessage());
-                                e.printStackTrace();
-                                break;
+                // ... (Phần code đọc tin nhắn cũ của bạn giữ nguyên) ...
+                try {
+                    while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
+                        // ... logic đọc tin nhắn ...
+                        try {
+                            MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
+                            if (incoming == null) break;
+                            String msg = incoming.getMessage();
+                            if (msg != null) {
+                                handleControlCommand(robot, msg, screenRect, audioManager, uplinkManager, controlSocket, hostId);
                             }
+                        } catch (Exception e) {
+                            break;
                         }
-                    } catch (Exception e) {
-                        System.err.println("[Host] Control reader thread error: " + e.getMessage());
-                        e.printStackTrace();
                     }
-              //  }, "HostControlReader");
-             //   readerThread.setDaemon(true);
-              //  readerThread.start();
-                // ===== KẾT THÚC PHẦN THÊM =====
-
-
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 
             } catch (Exception e) {
                 System.err.println("[Host] Control connection error: " + e.getMessage());
@@ -162,6 +165,9 @@ public class HostClient extends Application {
                 System.out.println("[Host] Control connection closed");
                 currentControlSocket = null;
                 controlSocketRef = null;
+
+                // [TÙY CHỌN] Nếu muốn đóng chat khi mất kết nối thì thêm dòng này:
+                // Platform.runLater(() -> HostChatWindow.hide());
             }
         }, "HostControlAccept").start();
     }

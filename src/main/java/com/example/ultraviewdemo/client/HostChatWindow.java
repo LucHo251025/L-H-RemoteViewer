@@ -40,22 +40,20 @@ public class HostChatWindow {
     }
 
     public static void initIfNeeded() {
-        if (stage != null) {
-            System.out.println("[HostChatWindow] initIfNeeded() called but stage already exists");
-            return;
-        }
-        System.out.println("[HostChatWindow] initIfNeeded() called - creating new stage");
+        if (stage != null) return;
+
         Platform.runLater(() -> {
-            if (stage != null) {
-                System.out.println("[HostChatWindow] Stage already created in another thread, returning");
-                return;
-            }
-            System.out.println("[HostChatWindow] Creating new HostChatWindow stage...");
+            if (stage != null) return;
+
             stage = new Stage(StageStyle.DECORATED);
             stage.setTitle("Host Chat");
-            stage.setAlwaysOnTop(true);
+            stage.setAlwaysOnTop(true); // Giữ cửa sổ luôn nổi lên trên
 
-            // Chat header with icon and title
+            // ... (Giữ nguyên phần tạo Header, ChatList, Input như cũ) ...
+            // Copy lại đoạn code tạo giao diện của bạn ở đây
+            // ...
+
+            // --- ĐOẠN GIỮ NGUYÊN ---
             HBox headerRow = new HBox(8.0);
             headerRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             Label chatIcon = new Label("💬");
@@ -66,13 +64,14 @@ public class HostChatWindow {
             HBox.setHgrow(spacer, Priority.ALWAYS);
             headerRow.getChildren().addAll(chatIcon, chatTitle, spacer);
 
-            // Styled chat list with custom cell factory
             chatList = new ListView<>();
-            chatList.setPrefSize(280, 320);
+            // Giảm kích thước PrefSize của list một chút cho vừa khung nhỏ
+            chatList.setPrefSize(260, 300);
             chatList.setStyle("-fx-background-color: #fafafa; -fx-background-insets: 0; -fx-background-radius: 10; -fx-border-color: #e5e7eb; -fx-border-radius: 10;");
-            
-            // Set custom cell factory for styled chat bubbles
+
+            // ... (Phần setCellFactory giữ nguyên) ...
             chatList.setCellFactory(lv -> new ListCell<>() {
+                // ... (Code cũ giữ nguyên) ...
                 @Override
                 protected void updateItem(ChatMessage item, boolean empty) {
                     super.updateItem(item, empty);
@@ -83,22 +82,25 @@ public class HostChatWindow {
                     }
                     Label bubble = new Label(item.text);
                     bubble.setWrapText(true);
-                    bubble.setMaxWidth(200);
+                    bubble.setMaxWidth(180); // Giảm max width bong bóng chat cho vừa cửa sổ nhỏ
+                    // ... (Phần style giữ nguyên) ...
                     bubble.setStyle(item.self
-                            ? "-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 12; -fx-background-radius: 16; -fx-font-weight: 500;"
-                            : "-fx-background-color: #f3f4f6; -fx-text-fill: #111827; -fx-padding: 10 12; -fx-background-radius: 16; -fx-font-weight: 500;");
+                            ? "-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 8 10; -fx-background-radius: 12; -fx-font-weight: 500;"
+                            : "-fx-background-color: #f3f4f6; -fx-text-fill: #111827; -fx-padding: 8 10; -fx-background-radius: 12; -fx-font-weight: 500;");
+
+                    // ... (Phần còn lại của CellFactory giữ nguyên) ...
                     Label name = new Label(item.self ? "You" : (item.sender != null ? item.sender : "Peer"));
-                    name.setStyle("-fx-font-size: 11px; -fx-text-fill: #6b7280; -fx-font-weight: 600;");
-                    VBox msgBox = new VBox(4, name, bubble);
+                    name.setStyle("-fx-font-size: 10px; -fx-text-fill: #6b7280; -fx-font-weight: 600;");
+                    VBox msgBox = new VBox(2, name, bubble);
                     HBox row = new HBox();
-                    Region spacer = new Region();
-                    HBox.setHgrow(spacer, Priority.ALWAYS);
+                    Region sp = new Region();
+                    HBox.setHgrow(sp, Priority.ALWAYS);
                     if (item.self) {
-                        row.getChildren().addAll(spacer, msgBox);
+                        row.getChildren().addAll(sp, msgBox);
                         row.setAlignment(Pos.CENTER_RIGHT);
                         msgBox.setAlignment(Pos.CENTER_RIGHT);
                     } else {
-                        row.getChildren().addAll(msgBox, spacer);
+                        row.getChildren().addAll(msgBox, sp);
                         row.setAlignment(Pos.CENTER_LEFT);
                         msgBox.setAlignment(Pos.CENTER_LEFT);
                     }
@@ -107,62 +109,58 @@ public class HostChatWindow {
                 }
             });
 
-            // Styled input field and send button
             input = new TextField();
-            input.setPromptText("Type a message...");
-            input.setStyle("-fx-background-radius: 10; -fx-border-radius: 10; -fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-padding: 8 10; -fx-text-inner-color: #111827; -fx-text-fill: #000000; -fx-prompt-text-fill: #9ca3af;");
+            input.setPromptText("Type...");
+            input.setStyle("-fx-background-radius: 10; -fx-border-radius: 10; -fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-padding: 6 8; -fx-text-inner-color: #111827; -fx-text-fill: #000000; -fx-prompt-text-fill: #9ca3af; -fx-font-size: 12px;");
 
             Button sendBtn = new Button("Send");
             sendBtn.setDefaultButton(true);
-            sendBtn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 10; -fx-font-weight: 700; -fx-padding: 8 14;");
+            sendBtn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 10; -fx-font-weight: 700; -fx-padding: 6 10; -fx-font-size: 12px;");
 
-            HBox inputRow = new HBox(8, input, sendBtn);
+            HBox inputRow = new HBox(6, input, sendBtn);
             inputRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             HBox.setHgrow(input, Priority.ALWAYS);
 
-            // Main container with card styling
-            VBox chatContainer = new VBox(10.0, chatList, inputRow);
-            chatContainer.setStyle("-fx-background-color: #ffffff; -fx-background-radius: 12; -fx-padding: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 6, 0, 0, 1);");
+            VBox chatContainer = new VBox(8.0, chatList, inputRow);
+            chatContainer.setStyle("-fx-background-color: #ffffff; -fx-background-radius: 12; -fx-padding: 10; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
 
             VBox root = new VBox(8.0, headerRow, chatContainer);
-            root.setPadding(new Insets(12));
+            root.setPadding(new Insets(10));
             root.setStyle("-fx-background-color: #f8fafc;");
+            // ---------------------
 
-            // Wire actions
+            // Wire actions (Giữ nguyên)
             Runnable sendAction = () -> {
                 String text = input.getText();
-                System.out.println("[HostChatWindow] Send button pressed, text: '" + text + "'");
                 if (text == null) return;
                 text = text.trim();
                 if (text.isEmpty()) return;
                 input.clear();
-                System.out.println("[HostChatWindow] onSend callback is: " + (onSend != null ? "SET" : "NULL"));
-                if (onSend != null) {
-                    onSend.accept(text);
-                    System.out.println("[HostChatWindow] onSend.accept() called");
-                } else {
-                    System.err.println("[HostChatWindow] ERROR: onSend callback is NULL!");
-                }
+                if (onSend != null) onSend.accept(text);
             };
             sendBtn.setOnAction(e -> sendAction.run());
             input.setOnAction(e -> sendAction.run());
 
-            stage.setScene(new Scene(root));
-            System.out.println("[HostChatWindow] Stage created and scene set successfully");
+            // [THAY ĐỔI QUAN TRỌNG] Set kích thước cố định nhỏ gọn: Rộng 300, Cao 400
+            stage.setScene(new Scene(root, 300, 400));
         });
     }
 
     public static void show() {
-        System.out.println("[HostChatWindow] show() called");
         initIfNeeded();
-        Platform.runLater(() -> { 
+        Platform.runLater(() -> {
             if (stage != null) {
-                System.out.println("[HostChatWindow] Actually showing stage");
-                stage.setFullScreen(true);
+                // [FIX] Đã XÓA dòng stage.setFullScreen(true);
+
                 stage.show();
                 stage.toFront();
-            } else {
-                System.err.println("[HostChatWindow] ERROR: stage is null when trying to show!");
+
+                // [TÙY CHỌN] Đặt vị trí cửa sổ ở góc dưới bên phải màn hình
+                try {
+                    javafx.geometry.Rectangle2D bounds = javafx.stage.Screen.getPrimary().getVisualBounds();
+                    stage.setX(bounds.getMaxX() - 320); // 320 là khoảng cách từ cạnh phải
+                    stage.setY(bounds.getMaxY() - 420); // 420 là khoảng cách từ cạnh dưới
+                } catch (Exception ignored) {}
             }
         });
     }
