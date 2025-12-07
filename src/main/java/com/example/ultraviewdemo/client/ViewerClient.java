@@ -600,16 +600,18 @@ public class ViewerClient extends Application {
 
         StackPane remoteContainer = (StackPane) scene.lookup("#remoteContainer");
         if (remoteContainer != null) {
+            // ================================================================
+            // [FIX] QUAN TRỌNG: Cho phép container thu nhỏ về 0
+            // Giúp StackPane không bị kẹt ở kích thước lớn sau khi thoát fullscreen
+            remoteContainer.setMinSize(0, 0);
+            // ================================================================
+
             remoteContainer.getChildren().clear();
             remoteImageView = new ImageView();
             remoteImageView.setFitWidth(1000);
             remoteImageView.setFitHeight(700);
             remoteImageView.setPreserveRatio(true);
             remoteImageView.getStyleClass().add("remote-image-view");
-
-            // Set minimum size to ensure ImageView is interactive
-            // remoteImageView.setMinWidth(1000.0);
-            // remoteImageView.setMinHeight(700.0);
 
             // Enable mouse events on ImageView
             remoteImageView.setMouseTransparent(false);

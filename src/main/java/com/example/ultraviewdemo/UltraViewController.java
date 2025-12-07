@@ -260,7 +260,6 @@ public class UltraViewController implements Initializable {
         javafx.stage.Stage localStage = (javafx.stage.Stage) window;
         this.stage = localStage;
 
-     
         if (!fullscreenListenerInitialized) {
             fullscreenListenerInitialized = true;
             localStage.fullScreenProperty().addListener((obs, wasFull, isFull) -> {
@@ -288,6 +287,13 @@ public class UltraViewController implements Initializable {
                     stage.setHeight(prevWindowHeight);
                     windowBoundsSaved = false;
                 }
+
+                // ========================================================
+                // [FIX] Cập nhật lại layout sau khi hiện lại các thanh bar
+                if (rootPane != null) {
+                    rootPane.requestLayout();
+                }
+                // ========================================================
             });
         }
 
