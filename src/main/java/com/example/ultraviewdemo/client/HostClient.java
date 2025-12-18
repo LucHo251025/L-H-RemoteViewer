@@ -157,9 +157,20 @@ public class HostClient extends Application {
         new Thread(() -> {
             try (Socket controlSocket = controlServer.accept()) {
                 controlSocketRef = controlSocket;
+
+                // Initialize chat window when viewer connects
                 Platform.runLater(() -> {
-                    try { HostChatWindow.initIfNeeded(); HostChatWindow.setOnSend(HostClient::sendChatFromUI); } catch (Exception e) {}
+                    try { 
+                        HostChatWindow.initIfNeeded(); 
+                        HostChatWindow.setOnSend(HostClient::sendChatFromUI); 
+                        HostChatWindow.show();
+                        HostChatWindow.addMessage("System", "Viewer connected!");
+                    } catch (Exception e) { 
+                        System.err.println("[Host] Error initializing chat"); 
+                        e.printStackTrace(); 
+                    }
                 });
+                
                 Robot robot = new Robot();
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 
@@ -185,6 +196,12 @@ public class HostClient extends Application {
         try {
             // XỬ LÝ AUDIO COMMAND
             if (command.startsWith("AUDIO_CMD:")) {
+                if (command.startsWith("AUDIO:")) {
+    String state = command.substring(6);
+    boolean enable = "ON".equals(state);
+    enableAudioSystem(enable);
+    return;
+}
                 String subCmd = command.substring(10);
                 switch (subCmd) {
                     case "REQUEST":
