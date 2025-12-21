@@ -202,12 +202,6 @@ public class HostClient extends Application {
             String command = incoming.getMessage();
             // XỬ LÝ AUDIO COMMAND
             if (command.startsWith("AUDIO_CMD:")) {
-                if (command.startsWith("AUDIO:")) {
-                    String state = command.substring(6);
-                    boolean enable = "ON".equals(state);
-                    enableAudioSystem(enable);
-                    return;
-                }
                 String subCmd = command.substring(10);
                 switch (subCmd) {
                     case "REQUEST":
@@ -223,6 +217,29 @@ public class HostClient extends Application {
                         enableAudioSystem(false);
                         if (smallControllerRef != null) Platform.runLater(() -> smallControllerRef.updateAudioUI(false));
                         break;
+                }
+                return;
+            }
+
+            // XỬ LÝ LỆNH BẬT/TẮT AUDIO TRỰC TIẾP TỪ VIEWER
+            if (command.startsWith("AUDIO:")) {
+                String state = command.substring(6);
+                boolean enable = "ON".equalsIgnoreCase(state);
+                enableAudioSystem(enable);
+                if (smallControllerRef != null) {
+                    boolean finalEnable = enable;
+                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
+                }
+                return;
+            }
+
+            if (command.startsWith("AUDIO_UP:")) {
+                String state = command.substring(9);
+                boolean enable = "ON".equalsIgnoreCase(state);
+                enableAudioSystem(enable);
+                if (smallControllerRef != null) {
+                    boolean finalEnable = enable;
+                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
                 }
                 return;
             }
