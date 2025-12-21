@@ -358,10 +358,20 @@ public class HostClient extends Application {
     public static boolean isControlConnected() { return controlSocketRef != null && !controlSocketRef.isClosed(); }
 
     private static ServerSocket createServerSocket(int port) throws IOException {
-        ServerSocket ss = new ServerSocket(); ss.setReuseAddress(true); ss.bind(new InetSocketAddress(port)); return ss;
+        ServerSocket ss = new ServerSocket();
+        ss.setReuseAddress(true);
+        ss.bind(new InetSocketAddress(port));
+        return ss;
     }
 
     private static int getKeyCode(String s) {
+        // Giữ nguyên logic mapping phím của bạn
+        try {
+            return KeyEvent.class.getField("VK_" + s).getInt(null);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
 
     // Classes AudioManager & UplinkManager giữ nguyên logic nhưng có thể static inner class
     static class AudioManager {
@@ -371,7 +381,8 @@ public class HostClient extends Application {
         private volatile Socket client;
 
         AudioManager(ServerSocket server, BooleanSupplier runFlag) {
-            this.server = server; this.shouldRun = new AtomicBoolean(true);
+            this.server = server;
+            this.shouldRun = new AtomicBoolean(true);
             new Thread(() -> {
                 while (runFlag.getAsBoolean()) {
                     try { Thread.sleep(500); } catch (Exception e) { /* ignore */ }
@@ -379,6 +390,7 @@ public class HostClient extends Application {
                 close();
             }).start();
         }
+
         void startAcceptLoop() {
             new Thread(() -> {
                 try {
@@ -389,12 +401,14 @@ public class HostClient extends Application {
                 } catch (Exception e) {
                     System.err.println("[Host] AudioManager acceptLoop error: " + e.getMessage());
                 }
-            }).start();
+            }, "HostAudioAccept").start();
         }
+
         void enable() { enabled.set(true); startStream(); }
         void disable() { enabled.set(false); }
+
         private void startStream() {
-            if(client == null || client.isClosed()) return;
+            if (client == null || client.isClosed()) return;
             new Thread(() -> {
                 try (OutputStream out = client.getOutputStream()) {
                     // Dùng 44.1kHz mono 16-bit để đồng bộ với Viewer và tăng tương thích thiết bị
@@ -417,9 +431,10 @@ public class HostClient extends Application {
                 } catch (Exception e) {
                     System.err.println("[Host] AudioManager startStream error: " + e.getMessage());
                 }
-            }).start();
+            }, "HostAudioStream").start();
         }
-        void close() { try{server.close();}catch(Exception e){} }
+
+        void close() { try { server.close(); } catch (Exception e) { } }
     }
 
     static class UplinkManager {
@@ -428,25 +443,55 @@ public class HostClient extends Application {
         private final AtomicBoolean shouldRun;
         private final AtomicBoolean enabled = new AtomicBoolean(false);
         private volatile Socket client;
+
         UplinkManager(ServerSocket server, BooleanSupplier runFlag) {
-            this.server = server; this.shouldRun = new AtomicBoolean(true);
-            new Thread(() -> { while(runFlag.getAsBoolean()){try{Thread.sleep(500);}catch(Exception e){}} close(); }).start();
-        }
-        void startAcceptLoop() { new Thread(() -> { try { while(shouldRun.get()){ client = server.accept(); if(enabled.get()) startPlay(); } }catch(Exception e){} }).start(); }
-        void enable() { enabled.set(true); startPlay(); }
-        void disable() { enabled.set(false); }
-        private void startPlay() {
-            if(client == null || client.isClosed()) return;
+            this.server = server;
+            this.shouldRun = new AtomicBoolean(true);
             new Thread(() -> {
-                try(InputStream in = client.getInputStream()) {
-                    SourceDataLine spk = AudioSystem.getSourceDataLine(new AudioFormat(44100f,16,1,true,false));
-                    spk.open(); spk.start(); byte[] b=new byte[4096]; int n;
-                    while(shouldRun.get() && enabled.get() && (n=in.read(b))!=-1){ if(n>0) spk.write(b,0,n); }
-                    spk.close();
-                } catch(Exception e){}
+                while (runFlag.getAsBoolean()) {
+                    try { Thread.sleep(500); } catch (Exception e) { /* ignore */ }
+                }
+                close();
             }).start();
         }
-        void close() { try{server.close();}catch(Exception e){} }
+
+        void startAcceptLoop() {
+            new Thread(() -> {
+                try {
+                    while (shouldRun.get()) {
+                        client = server.accept();
+                        if (enabled.get()) startPlay();
+                    }
+                } catch (Exception e) {
+                    System.err.println("[Host] UplinkManager acceptLoop error: " + e.getMessage());
+                }
+            }, "HostUplinkAccept").start();
+        }
+
+        void enable() { enabled.set(true); startPlay(); }
+        void disable() { enabled.set(false); }
+
+        private void startPlay() {
+            if (client == null || client.isClosed()) return;
+            new Thread(() -> {
+                try (InputStream in = client.getInputStream()) {
+                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
+                    SourceDataLine spk = AudioSystem.getSourceDataLine(fmt);
+                    spk.open(fmt);
+                    spk.start();
+                    byte[] b = new byte[4096];
+                    int n;
+                    while (shouldRun.get() && enabled.get() && (n = in.read(b)) != -1) {
+                        if (n > 0) spk.write(b, 0, n);
+                    }
+                    try { spk.stop(); spk.close(); } catch (Exception ignore) {}
+                } catch (Exception e) {
+                    System.err.println("[Host] UplinkManager startPlay error: " + e.getMessage());
+                }
+            }, "HostUplinkPlay").start();
+        }
+
+        void close() { try { server.close(); } catch (Exception e) { } }
     }
 
     @Override
@@ -456,5 +501,6 @@ public class HostClient extends Application {
         stage.setScene(new Scene(loader.load()));
         stage.show();
     }
+
     public static void main(String[] args) { launch(args); }
 }
