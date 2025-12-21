@@ -835,7 +835,7 @@ public class ViewerClient extends Application {
         // Gửi lệnh cho Host biết để bật/tắt Mic/Loa của họ
         sendControl("AUDIO:" + (enable ? "ON" : "OFF"));
         sendControl("AUDIO_UP:" + (enable ? "ON" : "OFF"));
-
+ 
         if (enable) {
             startAudioPlayer();  // Viewer nghe Host
             startAudioUplink();  // Viewer nói cho Host
