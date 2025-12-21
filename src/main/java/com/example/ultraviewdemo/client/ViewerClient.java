@@ -897,9 +897,7 @@ public class ViewerClient extends Application {
     }
 
     private AudioFormat pickOutputFormat() {
-        // Prefer 16k mono 16-bit LE, fallback to 44.1k if not supported
-        AudioFormat f16k = new AudioFormat(16000f, 16, 1, true, false);
-        if (AudioSystem.isLineSupported(new DataLine.Info(SourceDataLine.class, f16k))) return f16k;
+        // Dùng cùng format với Host (44.1kHz mono 16-bit LE) để tránh lệch sample rate
         AudioFormat f44 = new AudioFormat(44100f, 16, 1, true, false);
         return f44;
     }
