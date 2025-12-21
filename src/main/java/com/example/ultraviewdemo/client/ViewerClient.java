@@ -23,6 +23,9 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -556,6 +559,35 @@ public class ViewerClient extends Application {
         }
     }
 
+    private void sendFileFromViewer(File file) {
+        if (file == null) return;
+        if (controlSocket == null || controlSocket.isClosed()) {
+            System.err.println("[Viewer] Cannot send file: controlSocket is null or closed");
+            return;
+        }
+        try {
+            byte[] bytes = Files.readAllBytes(file.toPath());
+            String header = "FILE:" + file.getName() + ":" + bytes.length;
+
+            synchronized (controlWriteLock) {
+                if (viewerControlModel == null) {
+                    viewerControlModel = new MessageModel(Constant.ACTION_VIEWER_CONTROLLER, hostId);
+                    viewerControlModel.setPartner_id(hostId);
+                    viewerControlModel.setPartner_password(password);
+                }
+                viewerControlModel.setMessage(header);
+                viewerControlModel.setData(bytes);
+                SocketMethodHelpers.sendMessageNoTrack(controlSocket, viewerControlModel);
+            }
+
+            if (uiController != null) {
+                Platform.runLater(() -> uiController.addChatMessage("You", "Sent file: " + file.getName()));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void showError(String msg) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Connection Error");
@@ -596,6 +628,20 @@ public class ViewerClient extends Application {
                 // Hiển thị tin nhắn của chính mình một lần
                 Platform.runLater(() -> ctrl.addChatMessage("You", trimmed));
             });
+            ctrl.setOnFileSend(this::sendFileFromViewer);
+        }
+
+        // Tạo cửa sổ control chính cho Viewer
+        Stage controlStage = new Stage();
+        controlStage.setTitle("UltraView Remote - Viewer");
+        controlStage.setScene(scene);
+        controlStage.setMinWidth(1000);
+        controlStage.setMinHeight(700);
+        controlStage.setMaximized(true);
+
+        // Cung cấp Stage cho UltraViewController để dùng cho FileChooser, fullscreen, v.v.
+        if (ctrl != null) {
+            ctrl.setStage(controlStage);
         }
 
         StackPane remoteContainer = (StackPane) scene.lookup("#remoteContainer");
@@ -645,24 +691,6 @@ public class ViewerClient extends Application {
             });
         }
 
-        Stage controlStage = new Stage();
-        controlStage.setTitle("UltraView Remote - Viewer");
-        controlStage.setScene(scene);
-        controlStage.setMinWidth(1000);
-        controlStage.setMinHeight(700);
-        controlStage.setMaximized(true);
-
-        javafx.scene.control.Button disconnectBtn =
-                (javafx.scene.control.Button) scene.lookup("#disconnectBtn");
-        if (disconnectBtn != null) {
-            disconnectBtn.setOnAction(e -> {
-                controlStage.close();
-                if (primaryStage != null) {
-                    primaryStage.show();
-                }
-            });
-        }
-
         controlStage.show();
     }
 
@@ -706,6 +734,8 @@ public class ViewerClient extends Application {
                                 MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
                                 if (incoming == null) break;
                                 String msg = incoming.getMessage();
+                                byte[] data = incoming.getData();
+
                                 System.out.println("[Viewer] Received control message from host: " + msg); // Debug log
                                 if (msg != null) {
                                     if (msg.startsWith("HOST_SCREEN:")) {
@@ -722,6 +752,7 @@ public class ViewerClient extends Application {
                                         }
                                     }
                                     if (msg.startsWith("CHAT:")) {
+
                                         String text = msg.length() > 5 ? msg.substring(5) : "";
                                         System.out.println("[Viewer] Processing chat message from host: '" + text + "'"); // Debug log
                                         Platform.runLater(() -> {
@@ -737,6 +768,26 @@ public class ViewerClient extends Application {
                                         } catch (Exception e) {
                                             System.err.println("[Viewer] Failed to send CHAT_ACK: " + e.getMessage());
                                             e.printStackTrace();
+                                        }
+                                    } else if (msg.startsWith("FILE:")) {
+                                        // msg format: FILE:name:size
+                                        String[] parts = msg.split(":", 3);
+                                        if (parts.length >= 2 && data != null) {
+                                            String fileName = parts[1];
+                                            try {
+                                                Path saveDir = Paths.get(System.getProperty("user.home"), "Downloads", "UltraViewFiles");
+                                                Files.createDirectories(saveDir);
+                                                Path out = saveDir.resolve(fileName);
+                                                Files.write(out, data);
+
+                                                Platform.runLater(() -> {
+                                                    if (uiController != null) {
+                                                        uiController.addChatMessage("Host", "Sent file: " + fileName + " -> " + out.toString());
+                                                    }
+                                                });
+                                            } catch (IOException ioe) {
+                                                ioe.printStackTrace();
+                                            }
                                         }
                                     } else if (msg.startsWith("AUDIO:") || msg.startsWith("AUDIO_UP:")) {
                                         // Xử lý các lệnh âm thanh khác nếu cần

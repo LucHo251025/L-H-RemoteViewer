@@ -25,6 +25,10 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
@@ -160,17 +164,18 @@ public class HostClient extends Application {
 
                 // Initialize chat window when viewer connects
                 Platform.runLater(() -> {
-                    try { 
-                        HostChatWindow.initIfNeeded(); 
-                        HostChatWindow.setOnSend(HostClient::sendChatFromUI); 
+                    try {
+                        HostChatWindow.initIfNeeded();
+                        HostChatWindow.setOnSend(HostClient::sendChatFromUI);
+                        HostChatWindow.setOnFileSend(HostClient::sendFileFromUI);
                         HostChatWindow.show();
                         HostChatWindow.addMessage("System", "Viewer connected!");
-                    } catch (Exception e) { 
-                        System.err.println("[Host] Error initializing chat"); 
-                        e.printStackTrace(); 
+                    } catch (Exception e) {
+                        System.err.println("[Host] Error initializing chat");
+                        e.printStackTrace();
                     }
                 });
-                
+
                 Robot robot = new Robot();
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 
@@ -185,23 +190,24 @@ public class HostClient extends Application {
                     MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
                     if (incoming == null) break;
                     if (incoming.getMessage() != null) {
-                        handleControlCommand(robot, incoming.getMessage());
+                        handleControlCommand(robot, incoming);
                     }
                 }
             } catch (Exception e) { e.printStackTrace(); }
         }, "HostControlAccept").start();
     }
 
-    private static void handleControlCommand(Robot robot, String command) {
+    private static void handleControlCommand(Robot robot, MessageModel incoming) {
         try {
+            String command = incoming.getMessage();
             // XỬ LÝ AUDIO COMMAND
             if (command.startsWith("AUDIO_CMD:")) {
                 if (command.startsWith("AUDIO:")) {
-    String state = command.substring(6);
-    boolean enable = "ON".equals(state);
-    enableAudioSystem(enable);
-    return;
-}
+                    String state = command.substring(6);
+                    boolean enable = "ON".equals(state);
+                    enableAudioSystem(enable);
+                    return;
+                }
                 String subCmd = command.substring(10);
                 switch (subCmd) {
                     case "REQUEST":
@@ -227,6 +233,32 @@ public class HostClient extends Application {
                 Platform.runLater(() -> {
                     try { HostChatWindow.initIfNeeded(); HostChatWindow.show(); HostChatWindow.addMessage("Viewer", text); } catch (Exception e) {}
                 });
+                return;
+            }
+
+            // XỬ LÝ FILE
+            if (command.startsWith("FILE:")) {
+                String[] parts = command.split(":", 3);
+                byte[] data = incoming.getData();
+                if (parts.length >= 2 && data != null) {
+                    String fileName = parts[1];
+                    try {
+                        Path saveDir = Paths.get(System.getProperty("user.home"), "Downloads", "UltraViewFiles");
+                        Files.createDirectories(saveDir);
+                        Path out = saveDir.resolve(fileName);
+                        Files.write(out, data);
+
+                        Platform.runLater(() -> {
+                            try {
+                                HostChatWindow.initIfNeeded();
+                                HostChatWindow.show();
+                                HostChatWindow.addMessage("System", "Received file from viewer: " + fileName + " -> " + out.toString());
+                            } catch (Exception ignore) {}
+                        });
+                    } catch (IOException ioe) {
+                        ioe.printStackTrace();
+                    }
+                }
                 return;
             }
 
@@ -275,6 +307,35 @@ public class HostClient extends Application {
             }
             Platform.runLater(() -> { try { HostChatWindow.show(); HostChatWindow.addMessage("Host", text); } catch (Exception e){} });
         } catch(Exception e){}
+    }
+
+    public static void sendFileFromUI(File file) {
+        if (file == null) return;
+        if (controlSocketRef == null || controlSocketRef.isClosed()) {
+            System.err.println("[Host] Cannot send file: controlSocketRef is null or closed");
+            return;
+        }
+        try {
+            byte[] bytes = Files.readAllBytes(file.toPath());
+            String header = "FILE:" + file.getName() + ":" + bytes.length;
+
+            synchronized (controlWriteLock) {
+                MessageModel m = new MessageModel(Constant.ACTION_HOST, hostIdRef);
+                m.setMessage(header);
+                m.setData(bytes);
+                SocketMethodHelpers.sendMessageNoTrack(controlSocketRef, m);
+            }
+
+            Platform.runLater(() -> {
+                try {
+                    HostChatWindow.show();
+                    HostChatWindow.addMessage("Host", "Sent file: " + file.getName());
+                } catch (Exception ignore) {}
+            });
+        } catch (IOException e) {
+            System.err.println("[Host] Error sending file: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public static boolean isControlConnected() { return controlSocketRef != null && !controlSocketRef.isClosed(); }

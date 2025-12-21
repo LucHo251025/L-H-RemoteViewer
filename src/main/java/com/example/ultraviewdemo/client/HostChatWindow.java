@@ -13,9 +13,11 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
+import java.io.File;
 import java.util.function.Consumer;
 
 /**
@@ -27,15 +29,38 @@ public class HostChatWindow {
     private static ListView<ChatMessage> chatList;
     private static TextField input;
     private static Consumer<String> onSend;
+    private static Consumer<File> onFileSend;
 
     private static class ChatMessage {
         final boolean self;
         final String sender;
         final String text;
+        final FileMessage fileMessage;
+        
         ChatMessage(boolean self, String sender, String text) {
             this.self = self;
             this.sender = sender;
             this.text = text;
+            this.fileMessage = null;
+        }
+        
+        ChatMessage(boolean self, String sender, FileMessage fileMessage) {
+            this.self = self;
+            this.sender = sender;
+            this.text = fileMessage.fileName;
+            this.fileMessage = fileMessage;
+        }
+    }
+    
+    private static class FileMessage {
+        final String fileName;
+        final long fileSize;
+        final String filePath;
+        
+        FileMessage(String fileName, long fileSize, String filePath) {
+            this.fileName = fileName;
+            this.fileSize = fileSize;
+            this.filePath = filePath;
         }
     }
 
@@ -110,14 +135,24 @@ public class HostChatWindow {
             });
 
             input = new TextField();
-            input.setPromptText("Type...");
-            input.setStyle("-fx-background-radius: 10; -fx-border-radius: 10; -fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-padding: 6 8; -fx-text-inner-color: #111827; -fx-text-fill: #000000; -fx-prompt-text-fill: #9ca3af; -fx-font-size: 12px;");
+            input.setPromptText("Type a message...");
+            input.setStyle("-fx-background-color: transparent; -fx-text-fill: #111827; -fx-prompt-text-fill: #9ca3af; -fx-font-size: 12px; -fx-padding: 6 8; -fx-background-radius: 10; -fx-border-radius: 10; -fx-border-color: #e5e7eb;");
 
-            Button sendBtn = new Button("Send");
+            Button sendBtn = new Button("\u27a4"); // same arrow as viewer
             sendBtn.setDefaultButton(true);
-            sendBtn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 10; -fx-font-weight: 700; -fx-padding: 6 10; -fx-font-size: 12px;");
+            sendBtn.setStyle("-fx-background-color: linear-gradient(to right, #22d3ee, #0ea5e9); -fx-text-fill: white; -fx-background-radius: 10; -fx-font-weight: bold; -fx-font-size: 12px; -fx-min-width: 32; -fx-min-height: 28; -fx-max-width: 32; -fx-max-height: 28; -fx-cursor: hand;");
 
-            HBox inputRow = new HBox(6, input, sendBtn);
+            Button fileBtn = new Button("\ud83d\udcc1"); // file icon like viewer
+            fileBtn.setStyle("-fx-background-color: rgba(148, 163, 184, 0.35); -fx-text-fill: #111827; -fx-background-radius: 10; -fx-font-size: 12px; -fx-min-width: 28; -fx-min-height: 28; -fx-max-width: 28; -fx-max-height: 28; -fx-cursor: hand;");
+            fileBtn.setOnAction(e -> {
+                FileChooser fileChooser = new FileChooser();
+                File selectedFile = fileChooser.showOpenDialog(stage);
+                if (selectedFile != null && onFileSend != null) {
+                    onFileSend.accept(selectedFile);
+                }
+            });
+
+            HBox inputRow = new HBox(6, fileBtn, input, sendBtn);
             inputRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             HBox.setHgrow(input, Priority.ALWAYS);
 
@@ -172,6 +207,10 @@ public class HostChatWindow {
     public static void setOnSend(Consumer<String> handler) {
         System.out.println("[HostChatWindow] setOnSend called with handler: " + (handler != null ? "NOT NULL" : "NULL"));
         onSend = handler;
+    }
+
+    public static void setOnFileSend(Consumer<File> handler) {
+        onFileSend = handler;
     }
 
     public static void addMessage(String sender, String text) {

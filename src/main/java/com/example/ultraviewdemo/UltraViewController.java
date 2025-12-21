@@ -16,8 +16,10 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.geometry.Pos;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.File;
 import java.net.URL;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
@@ -105,7 +107,9 @@ public class UltraViewController implements Initializable {
     @FXML private ListView<ChatMessage> chatListView;
     @FXML private TextField chatInputField;
     @FXML private Button sendChatBtn;
+    @FXML private Button fileChatBtn;
     private Consumer<String> onChatSend;
+    private Consumer<File> onFileSend;
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -121,6 +125,9 @@ public class UltraViewController implements Initializable {
         }
         if (chatInputField != null) {
             chatInputField.setOnAction(e -> sendChatInternal()); // Enter to send
+        }
+        if (fileChatBtn != null) {
+            fileChatBtn.setOnAction(e -> openFileChooserAndSend());
         }
         if (chatListView != null) {
             chatListView.setCellFactory(lv -> new ListCell<>() {
@@ -394,6 +401,10 @@ public class UltraViewController implements Initializable {
         this.onChatSend = handler;
     }
 
+    public void setOnFileSend(Consumer<File> handler) {
+        this.onFileSend = handler;
+    }
+
     public void addChatMessage(String sender, String text) {
         if (chatListView != null) {
             boolean self = "You".equalsIgnoreCase(sender);
@@ -410,6 +421,15 @@ public class UltraViewController implements Initializable {
         if (msg.isEmpty()) return;
         if (onChatSend != null) onChatSend.accept(msg);
         chatInputField.clear();
+    }
+
+    private void openFileChooserAndSend() {
+        if (stage == null || onFileSend == null) return;
+        FileChooser chooser = new FileChooser();
+        File file = chooser.showOpenDialog(stage);
+        if (file != null) {
+            onFileSend.accept(file);
+        }
     }
 
     private void applyAudioButtonState() {
