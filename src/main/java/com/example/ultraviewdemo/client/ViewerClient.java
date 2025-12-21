@@ -512,8 +512,42 @@ public class ViewerClient extends Application {
         }
 
         private void startSender() {
-            // Simplified - just accept connection
-            System.out.println("[Host] Audio sender started");
+            new Thread(() -> {
+                try {
+                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
+                    DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
+                    
+                    if (!AudioSystem.isLineSupported(info)) {
+                        System.err.println("[Host] Microphone not supported for audio format");
+                        return;
+                    }
+                    
+                    TargetDataLine micLine = (TargetDataLine) AudioSystem.getLine(info);
+                    micLine.open(fmt);
+                    micLine.start();
+                    
+                    System.out.println("[Host] Audio sender started - capturing microphone");
+                    
+                    OutputStream out = client.getOutputStream();
+                    byte[] buf = new byte[4096];
+                    
+                    while (enabled && !client.isClosed() && shouldRun.getAsBoolean()) {
+                        int n = micLine.read(buf, 0, buf.length);
+                        if (n > 0) {
+                            out.write(buf, 0, n);
+                            out.flush();
+                        }
+                    }
+                    
+                    micLine.stop();
+                    micLine.close();
+                    System.out.println("[Host] Audio sender stopped");
+                    
+                } catch (Exception e) {
+                    System.err.println("[Host] Error in audio sender: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }, "HostAudioSender").start();
         }
     }
 
@@ -554,8 +588,42 @@ public class ViewerClient extends Application {
         }
 
         private void startReceiver() {
-            // Simplified - just accept connection
-            System.out.println("[Host] Uplink receiver started");
+            new Thread(() -> {
+                try {
+                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
+                    DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
+                    
+                    if (!AudioSystem.isLineSupported(info)) {
+                        System.err.println("[Host] Speakers not supported for audio format");
+                        return;
+                    }
+                    
+                    SourceDataLine speakerLine = (SourceDataLine) AudioSystem.getLine(info);
+                    speakerLine.open(fmt);
+                    speakerLine.start();
+                    
+                    System.out.println("[Host] Uplink receiver started - playing viewer audio");
+                    
+                    InputStream in = client.getInputStream();
+                    byte[] buf = new byte[4096];
+                    
+                    while (enabled && !client.isClosed() && shouldRun.getAsBoolean()) {
+                        int n = in.read(buf);
+                        if (n > 0) {
+                            speakerLine.write(buf, 0, n);
+                        }
+                    }
+                    
+                    speakerLine.drain();
+                    speakerLine.stop();
+                    speakerLine.close();
+                    System.out.println("[Host] Uplink receiver stopped");
+                    
+                } catch (Exception e) {
+                    System.err.println("[Host] Error in uplink receiver: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }, "HostUplinkReceiver").start();
         }
     }
 
