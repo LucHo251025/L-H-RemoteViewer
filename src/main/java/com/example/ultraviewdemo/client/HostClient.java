@@ -373,7 +373,6 @@ public class HostClient extends Application {
         }
     }
 
-    // Classes AudioManager & UplinkManager giữ nguyên logic nhưng có thể static inner class
     static class AudioManager {
         private final ServerSocket server;
         private final AtomicBoolean shouldRun;
@@ -383,9 +382,10 @@ public class HostClient extends Application {
         AudioManager(ServerSocket server, BooleanSupplier runFlag) {
             this.server = server;
             this.shouldRun = new AtomicBoolean(true);
+            // Luồng giám sát trạng thái hệ thống
             new Thread(() -> {
                 while (runFlag.getAsBoolean()) {
-                    try { Thread.sleep(500); } catch (Exception e) { /* ignore */ }
+                    try { Thread.sleep(500); } catch (Exception e) { }
                 }
                 close();
             }).start();
@@ -395,7 +395,10 @@ public class HostClient extends Application {
             new Thread(() -> {
                 try {
                     while (shouldRun.get()) {
-                        client = server.accept();
+                        // Chấp nhận kết nối từ Viewer (ViewerAudioPlayer)
+                        Socket s = server.accept();
+                        this.client = s;
+                        System.out.println("[Host] Viewer đã kết nối để nghe âm thanh từ Host.");
                         if (enabled.get()) startStream();
                     }
                 } catch (Exception e) {
@@ -404,37 +407,50 @@ public class HostClient extends Application {
             }, "HostAudioAccept").start();
         }
 
-        void enable() { enabled.set(true); startStream(); }
-        void disable() { enabled.set(false); }
+        void enable() {
+            enabled.set(true);
+            startStream();
+        }
+
+        void disable() {
+            enabled.set(false);
+        }
 
         private void startStream() {
-            if (client == null || client.isClosed()) return;
+            if (client == null || client.isClosed() || !enabled.get()) return;
+
             new Thread(() -> {
+                System.out.println("[Host] Đang truyền âm thanh từ Microphone tới Viewer...");
                 try (OutputStream out = client.getOutputStream()) {
-                    // Dùng 44.1kHz mono 16-bit để đồng bộ với Viewer và tăng tương thích thiết bị
                     AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
                     DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
+
                     if (!AudioSystem.isLineSupported(info)) {
-                        System.err.println("[Host] Microphone format 44.1kHz mono 16-bit not supported");
+                        System.err.println("[Host] Mic không hỗ trợ định dạng này.");
                         return;
                     }
 
                     TargetDataLine mic = (TargetDataLine) AudioSystem.getLine(info);
                     mic.open(fmt);
                     mic.start();
+
                     byte[] b = new byte[4096];
-                    while (shouldRun.get() && enabled.get()) {
+                    while (shouldRun.get() && enabled.get() && !client.isClosed()) {
                         int n = mic.read(b, 0, b.length);
                         if (n > 0) out.write(b, 0, n);
                     }
-                    try { mic.stop(); mic.close(); } catch (Exception ignore) {}
+                    mic.stop();
+                    mic.close();
                 } catch (Exception e) {
-                    System.err.println("[Host] AudioManager startStream error: " + e.getMessage());
+                    System.err.println("[Host] Lỗi truyền âm thanh: " + e.getMessage());
                 }
             }, "HostAudioStream").start();
         }
 
-        void close() { try { server.close(); } catch (Exception e) { } }
+        void close() {
+            shouldRun.set(false);
+            try { if(client != null) client.close(); server.close(); } catch (Exception e) { }
+        }
     }
 
     static class UplinkManager {

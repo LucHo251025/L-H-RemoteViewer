@@ -831,11 +831,14 @@ public class ViewerClient extends Application {
     private synchronized void enableAudio(boolean enable) {
         if (enable == audioEnabled) return;
         audioEnabled = enable;
+
+        // Gửi lệnh cho Host biết để bật/tắt Mic/Loa của họ
         sendControl("AUDIO:" + (enable ? "ON" : "OFF"));
         sendControl("AUDIO_UP:" + (enable ? "ON" : "OFF"));
+
         if (enable) {
-            startAudioPlayer();
-            startAudioUplink();
+            startAudioPlayer();  // Viewer nghe Host
+            startAudioUplink();  // Viewer nói cho Host
         } else {
             stopAudioPlayer();
             stopAudioUplink();
@@ -844,62 +847,67 @@ public class ViewerClient extends Application {
 
     private void startAudioPlayer() {
         if (audioThread != null && audioThread.isAlive()) return;
-        audioThread = new Thread(() -> {
-            int audioPort = hostStreamPort + 2;
-            while (audioEnabled) {
-                try (Socket s = new Socket(hostIp, audioPort); InputStream in = s.getInputStream()) {
-                    audioSocket = s;
 
-                    AudioFormat fmt = pickOutputFormat();
+        audioThread = new Thread(() -> {
+            // QUAN TRỌNG: hostStreamPort phải là cổng cơ sở (ví dụ 5000)
+            // Nếu hostStreamPort từ Directory là 5000, thì audioPort là 5002
+            int audioPort = hostStreamPort + 2;
+
+            System.out.println("[Viewer] Đang kết nối tới Host Audio Server tại cổng: " + audioPort);
+
+            while (audioEnabled) {
+                try (Socket s = new Socket(hostIp, audioPort);
+                     InputStream in = s.getInputStream()) {
+
+                    this.audioSocket = s;
+                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
                     DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
+
                     if (!AudioSystem.isLineSupported(info)) {
-                        System.err.println("Speaker line not supported for selected format");
-                        break; // cannot play at all
+                        System.err.println("[Viewer] Loa không hỗ trợ định dạng âm thanh này.");
+                        break;
                     }
+
                     speakerLine = (SourceDataLine) AudioSystem.getLine(info);
                     speakerLine.open(fmt);
                     speakerLine.start();
-                    byte[] buf = new byte[3200]; // slightly larger buffer for stability
-                    while (audioEnabled && !s.isClosed()) {
-                        int n = in.read(buf);
-                        if (n == -1) break;
-                        if (n > 0) speakerLine.write(buf, 0, n);
+
+                    byte[] buf = new byte[4096];
+                    int n;
+                    while (audioEnabled && !s.isClosed() && (n = in.read(buf)) != -1) {
+                        if (n > 0) {
+                            speakerLine.write(buf, 0, n);
+                        }
                     }
                 } catch (Exception e) {
-                    if (audioEnabled) System.err.println("Audio player error (will retry): " + e.getMessage());
+                    if (audioEnabled) {
+                        System.err.println("[Viewer] Lỗi nhận âm thanh (đang thử lại...): " + e.getMessage());
+                        try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+                    }
                 } finally {
-                    if (speakerLine != null) {
-                        try {
-                            speakerLine.drain();
-                            speakerLine.stop();
-                            speakerLine.close();
-                        } catch (Exception ignore) {
-                        }
-                        speakerLine = null;
-                    }
-                    if (audioSocket != null) {
-                        try {
-                            audioSocket.close();
-                        } catch (Exception ignore) {
-                        }
-                        audioSocket = null;
-                    }
-                }
-                if (audioEnabled) {
-                    try {
-                        Thread.sleep(300);
-                    } catch (InterruptedException ignore) {
-                    }
+                    cleanupAudioResources();
                 }
             }
         }, "ViewerAudioPlayer");
+        audioThread.setDaemon(true);
         audioThread.start();
+    }
+
+    private void cleanupAudioResources() {
+        try {
+            if (speakerLine != null) {
+                speakerLine.drain();
+                speakerLine.stop();
+                speakerLine.close();
+                speakerLine = null;
+            }
+        } catch (Exception ignored) {}
     }
 
     private AudioFormat pickOutputFormat() {
         // Dùng cùng format với Host (44.1kHz mono 16-bit LE) để tránh lệch sample rate
-        AudioFormat f44 = new AudioFormat(44100f, 16, 1, true, false);
-        return f44;
+        AudioFormat audio = new AudioFormat(44100f, 16, 1, true, false);
+        return audio;
     }
 
     private synchronized void stopAudioPlayer() {
