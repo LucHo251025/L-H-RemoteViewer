@@ -362,9 +362,6 @@ public class HostClient extends Application {
     }
 
     private static int getKeyCode(String s) {
-        // Giữ nguyên logic mapping phím của bạn
-        try { return KeyEvent.class.getField("VK_" + s).getInt(null); } catch (Exception e) { return -1; }
-    }
 
     // Classes AudioManager & UplinkManager giữ nguyên logic nhưng có thể static inner class
     static class AudioManager {
@@ -372,22 +369,54 @@ public class HostClient extends Application {
         private final AtomicBoolean shouldRun;
         private final AtomicBoolean enabled = new AtomicBoolean(false);
         private volatile Socket client;
+
         AudioManager(ServerSocket server, BooleanSupplier runFlag) {
             this.server = server; this.shouldRun = new AtomicBoolean(true);
-            new Thread(() -> { while(runFlag.getAsBoolean()){try{Thread.sleep(500);}catch(Exception e){}} close(); }).start();
+            new Thread(() -> {
+                while (runFlag.getAsBoolean()) {
+                    try { Thread.sleep(500); } catch (Exception e) { /* ignore */ }
+                }
+                close();
+            }).start();
         }
-        void startAcceptLoop() { new Thread(() -> { try { while(shouldRun.get()){ client = server.accept(); if(enabled.get()) startStream(); } }catch(Exception e){} }).start(); }
+        void startAcceptLoop() {
+            new Thread(() -> {
+                try {
+                    while (shouldRun.get()) {
+                        client = server.accept();
+                        if (enabled.get()) startStream();
+                    }
+                } catch (Exception e) {
+                    System.err.println("[Host] AudioManager acceptLoop error: " + e.getMessage());
+                }
+            }).start();
+        }
         void enable() { enabled.set(true); startStream(); }
         void disable() { enabled.set(false); }
         private void startStream() {
             if(client == null || client.isClosed()) return;
             new Thread(() -> {
-                try(OutputStream out = client.getOutputStream()) {
-                    TargetDataLine mic = AudioSystem.getTargetDataLine(new AudioFormat(16000f,16,1,true,false));
-                    mic.open(); mic.start(); byte[] b=new byte[1024];
-                    while(shouldRun.get() && enabled.get()){ int n=mic.read(b,0,b.length); if(n>0) out.write(b,0,n); }
-                    mic.close();
-                } catch(Exception e){}
+                try (OutputStream out = client.getOutputStream()) {
+                    // Dùng 44.1kHz mono 16-bit để đồng bộ với Viewer và tăng tương thích thiết bị
+                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
+                    DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
+                    if (!AudioSystem.isLineSupported(info)) {
+                        System.err.println("[Host] Microphone format 44.1kHz mono 16-bit not supported");
+                        return;
+                    }
+
+                    TargetDataLine mic = (TargetDataLine) AudioSystem.getLine(info);
+                    mic.open(fmt);
+                    mic.start();
+                    byte[] b = new byte[4096];
+                    while (shouldRun.get() && enabled.get()) {
+                        int n = mic.read(b, 0, b.length);
+                        if (n > 0) out.write(b, 0, n);
+                    }
+                    try { mic.stop(); mic.close(); } catch (Exception ignore) {}
+                } catch (Exception e) {
+                    System.err.println("[Host] AudioManager startStream error: " + e.getMessage());
+                }
             }).start();
         }
         void close() { try{server.close();}catch(Exception e){} }
