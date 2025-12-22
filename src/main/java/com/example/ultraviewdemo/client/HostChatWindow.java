@@ -20,10 +20,6 @@ import javafx.stage.StageStyle;
 import java.io.File;
 import java.util.function.Consumer;
 
-/**
- * A small, independent chat window for the Host to view messages from the Viewer and send replies.
- * This UI is standalone and does not depend on host-view.fxml.
- */
 public class HostChatWindow {
     private static Stage stage;
     private static ListView<ChatMessage> chatList;
@@ -72,13 +68,9 @@ public class HostChatWindow {
 
             stage = new Stage(StageStyle.DECORATED);
             stage.setTitle("Host Chat");
-            stage.setAlwaysOnTop(true); // Giữ cửa sổ luôn nổi lên trên
+            stage.setAlwaysOnTop(true);
 
-            // ... (Giữ nguyên phần tạo Header, ChatList, Input như cũ) ...
-            // Copy lại đoạn code tạo giao diện của bạn ở đây
-            // ...
 
-            // --- ĐOẠN GIỮ NGUYÊN ---
             HBox headerRow = new HBox(8.0);
             headerRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             Label chatIcon = new Label("💬");
