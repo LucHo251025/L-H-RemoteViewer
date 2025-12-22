@@ -70,6 +70,9 @@ public class UltraViewController implements Initializable {
     
     @FXML
     private Button disconnectActionButton;
+
+    @FXML
+    private Button disconnectBtn;
     
     @FXML
     private ImageView mouseCursor;
@@ -93,6 +96,8 @@ public class UltraViewController implements Initializable {
     // Audio state for toggle button (default OFF for clarity/stability)
     private boolean isAudioOn = false;
     private Consumer<Boolean> onAudioToggle; // callback to Viewer to start/stop audio
+
+    private Runnable onDisconnect;
 
     // Stage reference and listener flag for fullscreen toggling
     private Stage stage;
@@ -223,6 +228,10 @@ public class UltraViewController implements Initializable {
         
         if (disconnectActionButton != null) {
             disconnectActionButton.setOnAction(event -> disconnectCurrentSession());
+        }
+
+        if (disconnectBtn != null) {
+            disconnectBtn.setOnAction(event -> disconnectCurrentSession());
         }
     }
 
@@ -357,7 +366,9 @@ public class UltraViewController implements Initializable {
 
     private void disconnectCurrentSession() {
         System.out.println("Disconnecting current session...");
-        // Disconnect from current session
+        if (onDisconnect != null) {
+            onDisconnect.run();
+        }
     }
 
     private void updateConnectionStatus() {
@@ -391,6 +402,10 @@ public class UltraViewController implements Initializable {
 
     public void setOnAudioToggle(Consumer<Boolean> handler) {
         this.onAudioToggle = handler;
+    }
+
+    public void setOnDisconnect(Runnable handler) {
+        this.onDisconnect = handler;
     }
 
     public void setStage(Stage stage) {

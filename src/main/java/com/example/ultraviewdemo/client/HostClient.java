@@ -42,12 +42,12 @@ public class HostClient extends Application {
     // Static references cho Audio Manager để bật/tắt từ Controller
     private static volatile AudioManager staticAudioManager;
     private static volatile UplinkManager staticUplinkManager;
-   // private static volatile SmallHostControlController smallControllerRef;
+    private static volatile SmallHostControlController smallControllerRef;
 
     // Link Controller nhỏ vào đây để gọi update UI
-//    public static void bindSmallController(SmallHostControlController ctrl) {
-//        smallControllerRef = ctrl;
-//    }
+    public static void bindSmallController(SmallHostControlController ctrl) {
+        smallControllerRef = ctrl;
+    }
 
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
         hostIdRef = hostId;
@@ -76,7 +76,7 @@ public class HostClient extends Application {
         uplinkManager.startAcceptLoop();
 
         // Hiển thị thanh điều khiển nhỏ (Right Drawer)
-      //  Platform.runLater(() -> showSmallControl());
+        Platform.runLater(() -> showSmallControl());
 
         startControlAccept(controlServer, hostId, password, shouldRun);
 
@@ -98,7 +98,37 @@ public class HostClient extends Application {
                 }
             } finally { try { out.close(); } catch (Exception ignore) {} }
         } finally {
+            try {
+                notifyViewerHostStopping();
+            } catch (Exception ignore) {
+            }
             try { streamServer.close(); controlServer.close(); audioServer.close(); uplinkServer.close(); } catch (Exception ignore) {}
+        }
+    }
+
+    private static void notifyViewerHostStopping() {
+        // Tell viewer to disconnect immediately when Host stops sharing
+        Socket s = controlSocketRef;
+        if (s != null && !s.isClosed()) {
+            try {
+                synchronized (controlWriteLock) {
+                    MessageModel msg = new MessageModel(Constant.ACTION_HOST, hostIdRef);
+                    msg.setMessage("HOST_STOP");
+                    SocketMethodHelpers.sendMessageNoTrack(s, msg);
+                }
+            } catch (Exception ignore) {
+            }
+            try {
+                s.close();
+            } catch (Exception ignore) {
+            }
+        }
+    }
+
+    public static void requestViewerDisconnectBecauseHostStopping() {
+        try {
+            notifyViewerHostStopping();
+        } catch (Exception ignore) {
         }
     }
 
@@ -128,34 +158,34 @@ public class HostClient extends Application {
 
     // --- END AUDIO COMMAND LOGIC ---
 
-//    private static void showSmallControl() {
-//        try {
-//            FXMLLoader loader = new FXMLLoader(HostClient.class.getResource("/com/example/ultraviewdemo/demoView/small-host-control.fxml"));
-//            smallStage = new Stage();
-//            smallStage.initStyle(StageStyle.TRANSPARENT); // Trong suốt để làm menu nổi
-//            smallStage.setAlwaysOnTop(true);
-//            smallStage.setResizable(false);
-//            Scene scene = new Scene(loader.load());
-//            scene.setFill(Color.TRANSPARENT);
-//            smallStage.setScene(scene);
-//
-//            SmallHostControlController ctrl = loader.getController();
-//            bindSmallController(ctrl); // Binding
-//
-//            // Position as right-side desktop widget
-//            try {
-//                Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
-//                double w = 180;
-//                double h = 240;
-//                smallStage.setWidth(w);
-//                smallStage.setHeight(h);
-//                smallStage.setX(bounds.getMaxX() - w);
-//                smallStage.setY(bounds.getMinY() + (bounds.getHeight() - h) / 2.0);
-//            } catch (Exception ignore) {}
-//
-//            smallStage.show();
-//        } catch (Exception e) { e.printStackTrace(); }
-//    }
+    private static void showSmallControl() {
+        try {
+            FXMLLoader loader = new FXMLLoader(HostClient.class.getResource("/com/example/ultraviewdemo/demoView/small-host-control.fxml"));
+            smallStage = new Stage();
+            smallStage.initStyle(StageStyle.TRANSPARENT); // Trong suốt để làm menu nổi
+            smallStage.setAlwaysOnTop(true);
+            smallStage.setResizable(false);
+            Scene scene = new Scene(loader.load());
+            scene.setFill(Color.TRANSPARENT);
+            smallStage.setScene(scene);
+
+            SmallHostControlController ctrl = loader.getController();
+            bindSmallController(ctrl); // Binding
+
+            // Position as right-side desktop widget
+            try {
+                Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+                double w = 180;
+                double h = 240;
+                smallStage.setWidth(w);
+                smallStage.setHeight(h);
+                smallStage.setX(bounds.getMaxX() - w);
+                smallStage.setY(bounds.getMinY() + (bounds.getHeight() - h) / 2.0);
+            } catch (Exception ignore) {}
+
+            smallStage.show();
+        } catch (Exception e) { e.printStackTrace(); }
+    }
 
     private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun) {
         new Thread(() -> {
@@ -193,7 +223,29 @@ public class HostClient extends Application {
                         handleControlCommand(robot, incoming);
                     }
                 }
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                controlSocketRef = null;
+                try {
+                    enableAudioSystem(false);
+                } catch (Exception ignore) {
+                }
+
+                Platform.runLater(() -> {
+                    try {
+                        HostChatWindow.hide();
+                        if (smallControllerRef != null) {
+                            try { smallControllerRef.updateAudioUI(false); } catch (Exception ignore) {}
+                        }
+                        if (smallStage != null) {
+                            try { smallStage.close(); } catch (Exception ignore) {}
+                            smallStage = null;
+                        }
+                    } catch (Exception ignore) {
+                    }
+                });
+            }
         }, "HostControlAccept").start();
     }
 
@@ -202,22 +254,22 @@ public class HostClient extends Application {
             String command = incoming.getMessage();
             // XỬ LÝ AUDIO COMMAND
             if (command.startsWith("AUDIO_CMD:")) {
-//                String subCmd = command.substring(10);
-//                switch (subCmd) {
-//                    case "REQUEST":
-//                        if (smallControllerRef != null) smallControllerRef.onAudioRequestFromViewer();
-//                        break;
-//                    case "ACCEPT":
-//                        if (smallControllerRef != null) smallControllerRef.onAudioResponse(true);
-//                        break;
-//                    case "DENY":
-//                        if (smallControllerRef != null) smallControllerRef.onAudioResponse(false);
-//                        break;
-//                    case "OFF":
-//                        enableAudioSystem(false);
-//                        if (smallControllerRef != null) Platform.runLater(() -> smallControllerRef.updateAudioUI(false));
-//                        break;
-//                }
+                String subCmd = command.substring(10);
+                switch (subCmd) {
+                    case "REQUEST":
+                        if (smallControllerRef != null) smallControllerRef.onAudioRequestFromViewer();
+                        break;
+                    case "ACCEPT":
+                        if (smallControllerRef != null) smallControllerRef.onAudioResponse(true);
+                        break;
+                    case "DENY":
+                        if (smallControllerRef != null) smallControllerRef.onAudioResponse(false);
+                        break;
+                    case "OFF":
+                        enableAudioSystem(false);
+                        if (smallControllerRef != null) Platform.runLater(() -> smallControllerRef.updateAudioUI(false));
+                        break;
+                }
                 return;
             }
 
@@ -226,10 +278,10 @@ public class HostClient extends Application {
                 String state = command.substring(6);
                 boolean enable = "ON".equalsIgnoreCase(state);
                 enableAudioSystem(enable);
-//                if (smallControllerRef != null) {
-//                    boolean finalEnable = enable;
-//                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
-//                }
+                if (smallControllerRef != null) {
+                    boolean finalEnable = enable;
+                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
+                }
                 return;
             }
 
@@ -237,10 +289,10 @@ public class HostClient extends Application {
                 String state = command.substring(9);
                 boolean enable = "ON".equalsIgnoreCase(state);
                 enableAudioSystem(enable);
-//                if (smallControllerRef != null) {
-//                    boolean finalEnable = enable;
-//                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
-//                }
+                if (smallControllerRef != null) {
+                    boolean finalEnable = enable;
+                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
+                }
                 return;
             }
 
@@ -422,23 +474,65 @@ public class HostClient extends Application {
             new Thread(() -> {
                 System.out.println("[Host] Đang truyền âm thanh từ Microphone tới Viewer...");
                 try (OutputStream out = client.getOutputStream()) {
-                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
-                    DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
+                    // Try different audio formats for better compatibility
+                    AudioFormat[] formats = {
+                            new AudioFormat(44100f, 16, 1, true, false),  // 44.1kHz, 16-bit, mono, signed, little-endian
+                            new AudioFormat(44100f, 16, 1, false, false), // 44.1kHz, 16-bit, mono, unsigned, little-endian
+                            new AudioFormat(44100f, 16, 1, true, true),   // 44.1kHz, 16-bit, mono, signed, big-endian
+                            new AudioFormat(44100f, 8, 1, true, false),   // 44.1kHz, 8-bit, mono, signed, little-endian
+                            new AudioFormat(22050f, 16, 1, true, false),  // 22.05kHz, 16-bit, mono, signed, little-endian
+                            new AudioFormat(16000f, 16, 1, true, false),  // 16kHz, 16-bit, mono, signed, little-endian
+                            new AudioFormat(11025f, 16, 1, true, false),  // 11.025kHz, 16-bit, mono, signed, little-endian
+                            new AudioFormat(8000f, 16, 1, true, false),   // 8kHz, 16-bit, mono, signed, little-endian
+                            new AudioFormat(8000f, 8, 1, true, false)     // 8kHz, 8-bit, mono, signed, little-endian
+                    };
 
-                    if (!AudioSystem.isLineSupported(info)) {
-                        System.err.println("[Host] Mic không hỗ trợ định dạng này.");
+                    TargetDataLine mic = null;
+                    AudioFormat selectedFormat = null;
+
+                    // Find a supported format
+                    for (AudioFormat format : formats) {
+                        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+                        if (AudioSystem.isLineSupported(info)) {
+                            try {
+                                mic = (TargetDataLine) AudioSystem.getLine(info);
+                                mic.open(format);
+                                selectedFormat = format;
+                                System.out.println("[Host] Using audio format: " + format);
+                                break;
+                            } catch (Exception e) {
+                                System.out.println("[Host] Format " + format + " failed: " + e.getMessage());
+                                if (mic != null) {
+                                    try { mic.close(); } catch (Exception ignore) {}
+                                    mic = null;
+                                }
+                            }
+                        }
+                    }
+
+                    if (mic == null) {
+                        System.err.println("[Host] Không tìm thấy định dạng âm thanh được hỗ trợ nào.");
                         return;
                     }
 
-                    TargetDataLine mic = (TargetDataLine) AudioSystem.getLine(info);
-                    mic.open(fmt);
                     mic.start();
 
-                    byte[] b = new byte[4096];
+                    // Adjust buffer size based on format
+                    int bufferSize = selectedFormat.getSampleSizeInBits() == 8 ? 2048 : 4096;
+                    byte[] b = new byte[bufferSize];
+
                     while (shouldRun.get() && enabled.get() && !client.isClosed()) {
-                        int n = mic.read(b, 0, b.length);
-                        if (n > 0) out.write(b, 0, n);
+                        try {
+                            int n = mic.read(b, 0, b.length);
+                            if (n > 0) out.write(b, 0, n);
+                        } catch (Exception e) {
+                            if (enabled.get()) {
+                                System.err.println("[Host] Audio stream write error: " + e.getMessage());
+                                break;
+                            }
+                        }
                     }
+
                     mic.stop();
                     mic.close();
                 } catch (Exception e) {
@@ -491,15 +585,55 @@ public class HostClient extends Application {
             if (client == null || client.isClosed()) return;
             new Thread(() -> {
                 try (InputStream in = client.getInputStream()) {
-                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
-                    SourceDataLine spk = AudioSystem.getSourceDataLine(fmt);
-                    spk.open(fmt);
+                    // Try different audio formats for better compatibility
+                    AudioFormat[] formats = {
+                            new AudioFormat(44100f, 16, 1, true, false),  // 44.1kHz, 16-bit, mono, signed, little-endian
+                            new AudioFormat(44100f, 16, 1, false, false), // 44.1kHz, 16-bit, mono, unsigned, little-endian
+                            new AudioFormat(44100f, 16, 1, true, true),   // 44.1kHz, 16-bit, mono, signed, big-endian
+                            new AudioFormat(44100f, 8, 1, true, false),   // 44.1kHz, 8-bit, mono, signed, little-endian
+                            new AudioFormat(22050f, 16, 1, true, false),  // 22.05kHz, 16-bit, mono, signed, little-endian
+                            new AudioFormat(16000f, 16, 1, true, false)   // 16kHz, 16-bit, mono, signed, little-endian
+                    };
+
+                    SourceDataLine spk = null;
+                    AudioFormat selectedFormat = null;
+
+                    // Find a supported format
+                    for (AudioFormat format : formats) {
+                        DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+                        if (AudioSystem.isLineSupported(info)) {
+                            try {
+                                spk = (SourceDataLine) AudioSystem.getLine(info);
+                                spk.open(format);
+                                selectedFormat = format;
+                                System.out.println("[Host] Uplink using audio format: " + format);
+                                break;
+                            } catch (Exception e) {
+                                System.out.println("[Host] Uplink format " + format + " failed: " + e.getMessage());
+                                if (spk != null) {
+                                    try { spk.close(); } catch (Exception ignore) {}
+                                    spk = null;
+                                }
+                            }
+                        }
+                    }
+
+                    if (spk == null) {
+                        System.err.println("[Host] Uplink: Không tìm thấy định dạng âm thanh được hỗ trợ nào.");
+                        return;
+                    }
+
                     spk.start();
-                    byte[] b = new byte[4096];
+
+                    // Adjust buffer size based on format
+                    int bufferSize = selectedFormat.getSampleSizeInBits() == 8 ? 2048 : 4096;
+                    byte[] b = new byte[bufferSize];
                     int n;
+
                     while (shouldRun.get() && enabled.get() && (n = in.read(b)) != -1) {
                         if (n > 0) spk.write(b, 0, n);
                     }
+
                     try { spk.stop(); spk.close(); } catch (Exception ignore) {}
                 } catch (Exception e) {
                     System.err.println("[Host] UplinkManager startPlay error: " + e.getMessage());

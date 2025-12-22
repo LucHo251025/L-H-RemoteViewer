@@ -37,6 +37,8 @@ public class ViewerClient extends Application {
     private String password = "";
     private ImageView remoteImageView;
     private Socket controlSocket;
+    private volatile Socket streamSocket;
+    private volatile boolean disconnecting = false;
     private MessageModel viewerControlModel;
     private volatile int hostScreenWidth = 1920;
     private volatile int hostScreenHeight = 1080;
@@ -71,6 +73,46 @@ public class ViewerClient extends Application {
     // Keep reference to the primary stage (connect-host window)
     private Stage primaryStage;
 
+    private Stage controlStage;
+
+    private void disconnectAndExit() {
+        disconnecting = true;
+        try {
+            enableAudio(false);
+        } catch (Exception ignore) {
+        }
+
+        try {
+            if (streamSocket != null) streamSocket.close();
+        } catch (Exception ignore) {
+        } finally {
+            streamSocket = null;
+        }
+
+        try {
+            if (audioSocket != null) audioSocket.close();
+        } catch (Exception ignore) {
+        } finally {
+            audioSocket = null;
+        }
+
+        try {
+            if (uplinkSocket != null) uplinkSocket.close();
+        } catch (Exception ignore) {
+        } finally {
+            uplinkSocket = null;
+        }
+
+        try {
+            if (controlSocket != null) controlSocket.close();
+        } catch (Exception ignore) {
+        } finally {
+            controlSocket = null;
+        }
+
+        Platform.runLater(Platform::exit);
+    }
+
     @Override
     public void start(Stage stage) throws Exception {
         this.primaryStage = stage;
@@ -93,6 +135,7 @@ public class ViewerClient extends Application {
     private void startViewerMode(Stage stage) throws Exception {
         FXMLLoader connectLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/connect-host.fxml"));
         Scene connectScene = new Scene(connectLoader.load(), 900, 650);
+
         String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
         connectScene.getStylesheets().add(cssPath);
         stage.setTitle("UltraView Remote - Connect");
@@ -100,10 +143,22 @@ public class ViewerClient extends Application {
         stage.setMinWidth(700);
         stage.setMinHeight(500);
         stage.centerOnScreen();
+
+        stage.setOnCloseRequest(event -> {
+            if (disconnecting) return;
+            boolean connected = (controlSocket != null && !controlSocket.isClosed())
+                    || (streamSocket != null && !streamSocket.isClosed());
+            if (connected) {
+                event.consume();
+                disconnectAndExit();
+            }
+        });
+
         stage.show();
 
         ConnectHostController controller = connectLoader.getController();
         controller.setOnConnect(params -> {
+            this.disconnecting = false;
             this.serverHost = params.server;
             this.serverPort = params.port;
             this.hostId = params.hostId;
@@ -516,21 +571,21 @@ public class ViewerClient extends Application {
                 try {
                     AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
                     DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
-                    
+
                     if (!AudioSystem.isLineSupported(info)) {
                         System.err.println("[Host] Microphone not supported for audio format");
                         return;
                     }
-                    
+
                     TargetDataLine micLine = (TargetDataLine) AudioSystem.getLine(info);
                     micLine.open(fmt);
                     micLine.start();
-                    
+
                     System.out.println("[Host] Audio sender started - capturing microphone");
-                    
+
                     OutputStream out = client.getOutputStream();
                     byte[] buf = new byte[4096];
-                    
+
                     while (enabled && !client.isClosed() && shouldRun.getAsBoolean()) {
                         int n = micLine.read(buf, 0, buf.length);
                         if (n > 0) {
@@ -538,11 +593,11 @@ public class ViewerClient extends Application {
                             out.flush();
                         }
                     }
-                    
+
                     micLine.stop();
                     micLine.close();
                     System.out.println("[Host] Audio sender stopped");
-                    
+
                 } catch (Exception e) {
                     System.err.println("[Host] Error in audio sender: " + e.getMessage());
                     e.printStackTrace();
@@ -592,33 +647,33 @@ public class ViewerClient extends Application {
                 try {
                     AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
                     DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
-                    
+
                     if (!AudioSystem.isLineSupported(info)) {
                         System.err.println("[Host] Speakers not supported for audio format");
                         return;
                     }
-                    
+
                     SourceDataLine speakerLine = (SourceDataLine) AudioSystem.getLine(info);
                     speakerLine.open(fmt);
                     speakerLine.start();
-                    
+
                     System.out.println("[Host] Uplink receiver started - playing viewer audio");
-                    
+
                     InputStream in = client.getInputStream();
                     byte[] buf = new byte[4096];
-                    
+
                     while (enabled && !client.isClosed() && shouldRun.getAsBoolean()) {
                         int n = in.read(buf);
                         if (n > 0) {
                             speakerLine.write(buf, 0, n);
                         }
                     }
-                    
+
                     speakerLine.drain();
                     speakerLine.stop();
                     speakerLine.close();
                     System.out.println("[Host] Uplink receiver stopped");
-                    
+
                 } catch (Exception e) {
                     System.err.println("[Host] Error in uplink receiver: " + e.getMessage());
                     e.printStackTrace();
@@ -672,9 +727,63 @@ public class ViewerClient extends Application {
         alert.showAndWait();
     }
 
+    private void disconnectToConnectScreen() {
+        disconnecting = true;
+        try {
+            enableAudio(false);
+        } catch (Exception ignore) {
+        }
+
+        try {
+            if (streamSocket != null) streamSocket.close();
+        } catch (Exception ignore) {
+        } finally {
+            streamSocket = null;
+        }
+
+        try {
+            if (audioSocket != null) audioSocket.close();
+        } catch (Exception ignore) {
+        } finally {
+            audioSocket = null;
+        }
+
+        try {
+            if (uplinkSocket != null) uplinkSocket.close();
+        } catch (Exception ignore) {
+        } finally {
+            uplinkSocket = null;
+        }
+
+        try {
+            if (controlSocket != null) controlSocket.close();
+        } catch (Exception ignore) {
+        } finally {
+            controlSocket = null;
+        }
+
+        Platform.runLater(() -> {
+            try {
+                if (controlStage != null) {
+                    try {
+                        controlStage.close();
+                    } catch (Exception ignore) {
+                    }
+                    controlStage = null;
+                }
+                if (primaryStage != null) {
+                    primaryStage.show();
+                    primaryStage.toFront();
+                }
+            } catch (Exception ignore) {
+            }
+        });
+    }
+
     private void openControlWindow() throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/com/example/ultraviewdemo/demoView/ultraViewRemote.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
+
         String cssPath = getClass().getResource("/com/example/ultraviewdemo/demoView/ultraview.css").toExternalForm();
         scene.getStylesheets().add(cssPath);
 
@@ -683,6 +792,7 @@ public class ViewerClient extends Application {
         this.uiController = ctrl;
         if (ctrl != null) {
             ctrl.setOnAudioToggle(this::enableAudio);
+            ctrl.setOnDisconnect(this::disconnectToConnectScreen);
             // Gửi tin nhắn từ viewer tới host
             ctrl.setOnChatSend(text -> {
                 String trimmed = (text == null) ? "" : text.trim();
@@ -700,12 +810,18 @@ public class ViewerClient extends Application {
         }
 
         // Tạo cửa sổ control chính cho Viewer
-        Stage controlStage = new Stage();
+        controlStage = new Stage();
         controlStage.setTitle("UltraView Remote - Viewer");
         controlStage.setScene(scene);
         controlStage.setMinWidth(1000);
         controlStage.setMinHeight(700);
         controlStage.setMaximized(true);
+
+        controlStage.setOnCloseRequest(event -> {
+            if (disconnecting) return;
+            event.consume();
+            disconnectToConnectScreen();
+        });
 
         // Cung cấp Stage cho UltraViewController để dùng cho FileChooser, fullscreen, v.v.
         if (ctrl != null) {
@@ -765,8 +881,10 @@ public class ViewerClient extends Application {
     private void startNetworkConnection() {
         new Thread(() -> {
             try (Socket socket = new Socket(hostIp, hostStreamPort)) {
+                streamSocket = socket;
                 while (true) {
                     MessageModel viewerModel = SocketMethodHelpers.readMessage(socket);
+
                     byte[] buffer = viewerModel.getData();
                     if (buffer != null) {
                         Image img = new Image(new ByteArrayInputStream(buffer));
@@ -776,8 +894,19 @@ public class ViewerClient extends Application {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                Platform.runLater(() -> showError("Disconnected: " + e.getMessage()));
+                boolean expected = disconnecting;
+                if (!expected && e instanceof java.net.SocketException) {
+                    String m = e.getMessage();
+                    if (m != null && (m.toLowerCase().contains("aborted") || m.toLowerCase().contains("closed") || m.toLowerCase().contains("reset"))) {
+                        expected = true;
+                    }
+                }
+                if (!expected) {
+                    e.printStackTrace();
+                    Platform.runLater(() -> showError("Disconnected: " + e.getMessage()));
+                }
+            } finally {
+                streamSocket = null;
             }
         }).start();
     }
@@ -804,8 +933,14 @@ public class ViewerClient extends Application {
                                 String msg = incoming.getMessage();
                                 byte[] data = incoming.getData();
 
-                                System.out.println("[Viewer] Received control message from host: " + msg); // Debug log
+                                System.out.println("[Viewer] Received control message from host: " + msg);
                                 if (msg != null) {
+                                    if ("HOST_STOP".equalsIgnoreCase(msg.trim())) {
+                                        System.out.println("[Viewer] Host stopped sharing -> disconnecting viewer session");
+                                        Platform.runLater(this::disconnectToConnectScreen);
+                                        break;
+                                    }
+
                                     if (msg.startsWith("HOST_SCREEN:")) {
                                         String[] p = msg.split(":");
                                         if (p.length >= 3) {
@@ -819,10 +954,10 @@ public class ViewerClient extends Application {
                                             }
                                         }
                                     }
-                                    if (msg.startsWith("CHAT:")) {
 
+                                    if (msg.startsWith("CHAT:")) {
                                         String text = msg.length() > 5 ? msg.substring(5) : "";
-                                        System.out.println("[Viewer] Processing chat message from host: '" + text + "'"); // Debug log
+                                        System.out.println("[Viewer] Processing chat message from host: '" + text + "'");
                                         Platform.runLater(() -> {
                                             if (uiController != null) {
                                                 uiController.addChatMessage("Host", text);
@@ -830,7 +965,6 @@ public class ViewerClient extends Application {
                                                 System.err.println("[Viewer] uiController is null when trying to display chat message");
                                             }
                                         });
-                                        // Send ACK back to host so it can log that viewer received the chat
                                         try {
                                             sendControl("CHAT_ACK:" + text);
                                         } catch (Exception e) {
@@ -838,7 +972,6 @@ public class ViewerClient extends Application {
                                             e.printStackTrace();
                                         }
                                     } else if (msg.startsWith("FILE:")) {
-                                        // msg format: FILE:name:size
                                         String[] parts = msg.split(":", 3);
                                         if (parts.length >= 2 && data != null) {
                                             String fileName = parts[1];
@@ -858,12 +991,21 @@ public class ViewerClient extends Application {
                                             }
                                         }
                                     } else if (msg.startsWith("AUDIO:") || msg.startsWith("AUDIO_UP:")) {
-                                        // Xử lý các lệnh âm thanh khác nếu cần
+                                        // ignore
                                     }
                                 }
                             } catch (Exception e) {
-                                System.err.println("[Viewer] Error in control message reader: " + e.getMessage());
-                                e.printStackTrace();
+                                boolean expected = disconnecting;
+                                if (!expected && e instanceof java.net.SocketException) {
+                                    String m = e.getMessage();
+                                    if (m != null && (m.toLowerCase().contains("aborted") || m.toLowerCase().contains("closed") || m.toLowerCase().contains("reset"))) {
+                                        expected = true;
+                                    }
+                                }
+                                if (!expected) {
+                                    System.err.println("[Viewer] Error in control message reader: " + e.getMessage());
+                                    e.printStackTrace();
+                                }
                                 break; // Thoát vòng lặp nếu có lỗi
                             }
                         }
@@ -874,8 +1016,17 @@ public class ViewerClient extends Application {
                 reader.setDaemon(true);
                 reader.start();
             } catch (Exception e) {
-                System.err.println("[Viewer] Failed to establish control connection: " + e.getMessage());
-                e.printStackTrace();
+                boolean expected = disconnecting;
+                if (!expected && e instanceof java.net.SocketException) {
+                    String m = e.getMessage();
+                    if (m != null && (m.toLowerCase().contains("aborted") || m.toLowerCase().contains("closed") || m.toLowerCase().contains("reset"))) {
+                        expected = true;
+                    }
+                }
+                if (!expected) {
+                    System.err.println("[Viewer] Failed to establish control connection: " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
         }, "ViewerControlConnect").start();
     }
@@ -903,7 +1054,7 @@ public class ViewerClient extends Application {
         // Gửi lệnh cho Host biết để bật/tắt Mic/Loa của họ
         sendControl("AUDIO:" + (enable ? "ON" : "OFF"));
         sendControl("AUDIO_UP:" + (enable ? "ON" : "OFF"));
- 
+
         if (enable) {
             startAudioPlayer();  // Viewer nghe Host
             startAudioUplink();  // Viewer nói cho Host
@@ -917,6 +1068,8 @@ public class ViewerClient extends Application {
         if (audioThread != null && audioThread.isAlive()) return;
 
         audioThread = new Thread(() -> {
+            // QUAN TRỌNG: hostStreamPort phải là cổng cơ sở (ví dụ 5000)
+            // Nếu hostStreamPort từ Directory là 5000, thì audioPort là 5002
             int audioPort = hostStreamPort + 2;
 
             System.out.println("[Viewer] Đang kết nối tới Host Audio Server tại cổng: " + audioPort);
