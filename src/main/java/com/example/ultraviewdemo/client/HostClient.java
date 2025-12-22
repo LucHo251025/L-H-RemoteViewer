@@ -42,12 +42,12 @@ public class HostClient extends Application {
     // Static references cho Audio Manager để bật/tắt từ Controller
     private static volatile AudioManager staticAudioManager;
     private static volatile UplinkManager staticUplinkManager;
-    private static volatile SmallHostControlController smallControllerRef;
+   // private static volatile SmallHostControlController smallControllerRef;
 
     // Link Controller nhỏ vào đây để gọi update UI
-    public static void bindSmallController(SmallHostControlController ctrl) {
-        smallControllerRef = ctrl;
-    }
+//    public static void bindSmallController(SmallHostControlController ctrl) {
+//        smallControllerRef = ctrl;
+//    }
 
     public static void shareLoop(String server, int port, String hostId, String password, BooleanSupplier shouldRun) throws Exception {
         hostIdRef = hostId;
@@ -76,7 +76,7 @@ public class HostClient extends Application {
         uplinkManager.startAcceptLoop();
 
         // Hiển thị thanh điều khiển nhỏ (Right Drawer)
-        Platform.runLater(() -> showSmallControl());
+      //  Platform.runLater(() -> showSmallControl());
 
         startControlAccept(controlServer, hostId, password, shouldRun);
 
@@ -128,34 +128,34 @@ public class HostClient extends Application {
 
     // --- END AUDIO COMMAND LOGIC ---
 
-    private static void showSmallControl() {
-        try {
-            FXMLLoader loader = new FXMLLoader(HostClient.class.getResource("/com/example/ultraviewdemo/demoView/small-host-control.fxml"));
-            smallStage = new Stage();
-            smallStage.initStyle(StageStyle.TRANSPARENT); // Trong suốt để làm menu nổi
-            smallStage.setAlwaysOnTop(true);
-            smallStage.setResizable(false);
-            Scene scene = new Scene(loader.load());
-            scene.setFill(Color.TRANSPARENT);
-            smallStage.setScene(scene);
-
-            SmallHostControlController ctrl = loader.getController();
-            bindSmallController(ctrl); // Binding
-
-            // Position as right-side desktop widget
-            try {
-                Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
-                double w = 180;
-                double h = 240;
-                smallStage.setWidth(w);
-                smallStage.setHeight(h);
-                smallStage.setX(bounds.getMaxX() - w);
-                smallStage.setY(bounds.getMinY() + (bounds.getHeight() - h) / 2.0);
-            } catch (Exception ignore) {}
-
-            smallStage.show();
-        } catch (Exception e) { e.printStackTrace(); }
-    }
+//    private static void showSmallControl() {
+//        try {
+//            FXMLLoader loader = new FXMLLoader(HostClient.class.getResource("/com/example/ultraviewdemo/demoView/small-host-control.fxml"));
+//            smallStage = new Stage();
+//            smallStage.initStyle(StageStyle.TRANSPARENT); // Trong suốt để làm menu nổi
+//            smallStage.setAlwaysOnTop(true);
+//            smallStage.setResizable(false);
+//            Scene scene = new Scene(loader.load());
+//            scene.setFill(Color.TRANSPARENT);
+//            smallStage.setScene(scene);
+//
+//            SmallHostControlController ctrl = loader.getController();
+//            bindSmallController(ctrl); // Binding
+//
+//            // Position as right-side desktop widget
+//            try {
+//                Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+//                double w = 180;
+//                double h = 240;
+//                smallStage.setWidth(w);
+//                smallStage.setHeight(h);
+//                smallStage.setX(bounds.getMaxX() - w);
+//                smallStage.setY(bounds.getMinY() + (bounds.getHeight() - h) / 2.0);
+//            } catch (Exception ignore) {}
+//
+//            smallStage.show();
+//        } catch (Exception e) { e.printStackTrace(); }
+//    }
 
     private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun) {
         new Thread(() -> {
@@ -202,22 +202,22 @@ public class HostClient extends Application {
             String command = incoming.getMessage();
             // XỬ LÝ AUDIO COMMAND
             if (command.startsWith("AUDIO_CMD:")) {
-                String subCmd = command.substring(10);
-                switch (subCmd) {
-                    case "REQUEST":
-                        if (smallControllerRef != null) smallControllerRef.onAudioRequestFromViewer();
-                        break;
-                    case "ACCEPT":
-                        if (smallControllerRef != null) smallControllerRef.onAudioResponse(true);
-                        break;
-                    case "DENY":
-                        if (smallControllerRef != null) smallControllerRef.onAudioResponse(false);
-                        break;
-                    case "OFF":
-                        enableAudioSystem(false);
-                        if (smallControllerRef != null) Platform.runLater(() -> smallControllerRef.updateAudioUI(false));
-                        break;
-                }
+//                String subCmd = command.substring(10);
+//                switch (subCmd) {
+//                    case "REQUEST":
+//                        if (smallControllerRef != null) smallControllerRef.onAudioRequestFromViewer();
+//                        break;
+//                    case "ACCEPT":
+//                        if (smallControllerRef != null) smallControllerRef.onAudioResponse(true);
+//                        break;
+//                    case "DENY":
+//                        if (smallControllerRef != null) smallControllerRef.onAudioResponse(false);
+//                        break;
+//                    case "OFF":
+//                        enableAudioSystem(false);
+//                        if (smallControllerRef != null) Platform.runLater(() -> smallControllerRef.updateAudioUI(false));
+//                        break;
+//                }
                 return;
             }
 
@@ -226,10 +226,10 @@ public class HostClient extends Application {
                 String state = command.substring(6);
                 boolean enable = "ON".equalsIgnoreCase(state);
                 enableAudioSystem(enable);
-                if (smallControllerRef != null) {
-                    boolean finalEnable = enable;
-                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
-                }
+//                if (smallControllerRef != null) {
+//                    boolean finalEnable = enable;
+//                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
+//                }
                 return;
             }
 
@@ -237,10 +237,10 @@ public class HostClient extends Application {
                 String state = command.substring(9);
                 boolean enable = "ON".equalsIgnoreCase(state);
                 enableAudioSystem(enable);
-                if (smallControllerRef != null) {
-                    boolean finalEnable = enable;
-                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
-                }
+//                if (smallControllerRef != null) {
+//                    boolean finalEnable = enable;
+//                    Platform.runLater(() -> smallControllerRef.updateAudioUI(finalEnable));
+//                }
                 return;
             }
 

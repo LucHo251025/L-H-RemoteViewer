@@ -917,8 +917,6 @@ public class ViewerClient extends Application {
         if (audioThread != null && audioThread.isAlive()) return;
 
         audioThread = new Thread(() -> {
-            // QUAN TRỌNG: hostStreamPort phải là cổng cơ sở (ví dụ 5000)
-            // Nếu hostStreamPort từ Directory là 5000, thì audioPort là 5002
             int audioPort = hostStreamPort + 2;
 
             System.out.println("[Viewer] Đang kết nối tới Host Audio Server tại cổng: " + audioPort);
