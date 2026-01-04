@@ -39,8 +39,8 @@
         <Button fx:id="chatBtn" text="💬 Chat" prefWidth="90.0"
                 style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;"/>
 
-        <Button fx:id="audioBtn" text="🎤 Audio" prefWidth="90.0"
-                style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-cursor: hand;"/>
+<!--        <Button fx:id="audioBtn" text="🎤 Audio" prefWidth="90.0"-->
+<!--                style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-cursor: hand;"/>-->
 
         <VBox prefHeight="10.0" />
 

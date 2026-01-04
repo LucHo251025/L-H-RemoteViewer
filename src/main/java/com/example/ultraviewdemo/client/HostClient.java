@@ -32,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
+
 public class HostClient extends Application {
     private static volatile Socket controlSocketRef;
     private static final Object controlWriteLock = new Object();
@@ -425,16 +426,21 @@ public class HostClient extends Application {
         }
     }
 
+    // Thay thế AudioManager và UplinkManager trong HostClient.java
+
+    // Thay thế AudioManager và UplinkManager trong HostClient.java
+
     static class AudioManager {
         private final ServerSocket server;
         private final AtomicBoolean shouldRun;
         private final AtomicBoolean enabled = new AtomicBoolean(false);
         private volatile Socket client;
+        private volatile Thread streamThread;
+        private volatile TargetDataLine micLine;
 
         AudioManager(ServerSocket server, BooleanSupplier runFlag) {
             this.server = server;
             this.shouldRun = new AtomicBoolean(true);
-            // Luồng giám sát trạng thái hệ thống
             new Thread(() -> {
                 while (runFlag.getAsBoolean()) {
                     try { Thread.sleep(500); } catch (Exception e) { }
@@ -447,11 +453,19 @@ public class HostClient extends Application {
             new Thread(() -> {
                 try {
                     while (shouldRun.get()) {
-                        // Chấp nhận kết nối từ Viewer (ViewerAudioPlayer)
                         Socket s = server.accept();
+
+                        // Đóng client cũ nếu có
+                        if (this.client != null) {
+                            try { this.client.close(); } catch (Exception ignore) {}
+                        }
+
                         this.client = s;
-                        System.out.println("[Host] Viewer đã kết nối để nghe âm thanh từ Host.");
-                        if (enabled.get()) startStream();
+                        System.out.println("[Host] Viewer connected for audio at: " + s.getRemoteSocketAddress());
+
+                        if (enabled.get()) {
+                            startStream();
+                        }
                     }
                 } catch (Exception e) {
                     System.err.println("[Host] AudioManager acceptLoop error: " + e.getMessage());
@@ -466,184 +480,226 @@ public class HostClient extends Application {
 
         void disable() {
             enabled.set(false);
+            stopStream();
+        }
+
+        private void stopStream() {
+            System.out.println("[Host] Stopping audio stream");
+
+            // Stop mic line
+            if (micLine != null) {
+                try {
+                    micLine.stop();
+                    micLine.close();
+                } catch (Exception e) {
+                    System.err.println("[Host] Error closing mic: " + e.getMessage());
+                }
+                micLine = null;
+            }
+
+            // Wait for stream thread
+            if (streamThread != null) {
+                try {
+                    streamThread.join(500);
+                    if (streamThread.isAlive()) {
+                        streamThread.interrupt();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                streamThread = null;
+            }
+
+            System.out.println("[Host] Audio stream stopped");
         }
 
         private void startStream() {
-            if (client == null || client.isClosed() || !enabled.get()) return;
+            if (client == null || client.isClosed() || !enabled.get()) {
+                return;
+            }
 
-            new Thread(() -> {
-                System.out.println("[Host] Đang truyền âm thanh từ Microphone tới Viewer...");
-                try (OutputStream out = client.getOutputStream()) {
-                    // Try different audio formats for better compatibility
+            // Stop existing stream if any
+            stopStream();
+
+            streamThread = new Thread(() -> {
+                System.out.println("[Host] Starting audio stream to Viewer");
+
+                TargetDataLine localMic = null;
+
+                try {
+                    OutputStream out = client.getOutputStream();
+
                     AudioFormat[] formats = {
-                            new AudioFormat(44100f, 16, 1, true, false),  // 44.1kHz, 16-bit, mono, signed, little-endian
-                            new AudioFormat(44100f, 16, 1, false, false), // 44.1kHz, 16-bit, mono, unsigned, little-endian
-                            new AudioFormat(44100f, 16, 1, true, true),   // 44.1kHz, 16-bit, mono, signed, big-endian
-                            new AudioFormat(44100f, 8, 1, true, false),   // 44.1kHz, 8-bit, mono, signed, little-endian
-                            new AudioFormat(22050f, 16, 1, true, false),  // 22.05kHz, 16-bit, mono, signed, little-endian
-                            new AudioFormat(16000f, 16, 1, true, false),  // 16kHz, 16-bit, mono, signed, little-endian
-                            new AudioFormat(11025f, 16, 1, true, false),  // 11.025kHz, 16-bit, mono, signed, little-endian
-                            new AudioFormat(8000f, 16, 1, true, false),   // 8kHz, 16-bit, mono, signed, little-endian
-                            new AudioFormat(8000f, 8, 1, true, false)     // 8kHz, 8-bit, mono, signed, little-endian
+                            new AudioFormat(44100f, 16, 1, true, false),
+                            new AudioFormat(44100f, 16, 1, false, false),
+                            new AudioFormat(22050f, 16, 1, true, false),
+                            new AudioFormat(16000f, 16, 1, true, false)
                     };
 
-                    TargetDataLine mic = null;
                     AudioFormat selectedFormat = null;
 
-                    // Find a supported format
                     for (AudioFormat format : formats) {
                         DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
                         if (AudioSystem.isLineSupported(info)) {
                             try {
-                                mic = (TargetDataLine) AudioSystem.getLine(info);
-                                mic.open(format);
+                                localMic = (TargetDataLine) AudioSystem.getLine(info);
+                                localMic.open(format);
                                 selectedFormat = format;
                                 System.out.println("[Host] Using audio format: " + format);
                                 break;
                             } catch (Exception e) {
-                                System.out.println("[Host] Format " + format + " failed: " + e.getMessage());
-                                if (mic != null) {
-                                    try { mic.close(); } catch (Exception ignore) {}
-                                    mic = null;
+                                System.out.println("[Host] Format failed: " + e.getMessage());
+                                if (localMic != null) {
+                                    try { localMic.close(); } catch (Exception ignore) {}
+                                    localMic = null;
                                 }
                             }
                         }
                     }
 
-                    if (mic == null) {
-                        System.err.println("[Host] Không tìm thấy định dạng âm thanh được hỗ trợ nào.");
+                    if (localMic == null) {
+                        System.err.println("[Host] No supported audio format found");
                         return;
                     }
 
-                    mic.start();
+                    this.micLine = localMic;
+                    localMic.start();
 
-                    // Adjust buffer size based on format
                     int bufferSize = selectedFormat.getSampleSizeInBits() == 8 ? 2048 : 4096;
                     byte[] b = new byte[bufferSize];
 
                     while (shouldRun.get() && enabled.get() && !client.isClosed()) {
                         try {
-                            int n = mic.read(b, 0, b.length);
-                            if (n > 0) out.write(b, 0, n);
+                            int n = localMic.read(b, 0, b.length);
+                            if (n > 0 && enabled.get()) {
+                                out.write(b, 0, n);
+                                out.flush();
+                            }
                         } catch (Exception e) {
                             if (enabled.get()) {
-                                System.err.println("[Host] Audio stream write error: " + e.getMessage());
+                                System.err.println("[Host] Stream write error: " + e.getMessage());
                                 break;
                             }
                         }
                     }
 
-                    mic.stop();
-                    mic.close();
+                    System.out.println("[Host] Audio stream loop ended");
+
                 } catch (Exception e) {
-                    System.err.println("[Host] Lỗi truyền âm thanh: " + e.getMessage());
+                    System.err.println("[Host] Audio stream error: " + e.getMessage());
+                } finally {
+                    if (localMic != null) {
+                        try {
+                            localMic.stop();
+                            localMic.close();
+                        } catch (Exception e) {
+                            System.err.println("[Host] Error closing mic: " + e.getMessage());
+                        }
+                    }
+                    this.micLine = null;
+                    System.out.println("[Host] Audio stream cleaned up");
                 }
-            }, "HostAudioStream").start();
+            }, "HostAudioStream");
+
+            streamThread.setDaemon(true);
+            streamThread.start();
         }
 
         void close() {
             shouldRun.set(false);
-            try { if(client != null) client.close(); server.close(); } catch (Exception e) { }
+            enabled.set(false);
+            stopStream();
+            try {
+                if(client != null) client.close();
+                server.close();
+            } catch (Exception e) { }
         }
     }
 
     static class UplinkManager {
-        // Tương tự AudioManager nhưng là Speaker (SourceDataLine)
         private final ServerSocket server;
         private final AtomicBoolean shouldRun;
         private final AtomicBoolean enabled = new AtomicBoolean(false);
         private volatile Socket client;
+        private volatile Thread playThread;
+        private volatile SourceDataLine speakerLine;
 
         UplinkManager(ServerSocket server, BooleanSupplier runFlag) {
             this.server = server;
             this.shouldRun = new AtomicBoolean(true);
+            // Thread tự hủy khi Host dừng sharing
             new Thread(() -> {
                 while (runFlag.getAsBoolean()) {
-                    try { Thread.sleep(500); } catch (Exception e) { /* ignore */ }
+                    try { Thread.sleep(500); } catch (Exception e) { }
                 }
                 close();
             }).start();
         }
 
+        // Bổ sung phương thức close() để hết lỗi biên dịch
+        public void close() {
+            enabled.set(false);
+            shouldRun.set(false);
+            stopPlay();
+            try {
+                if (client != null) client.close();
+                if (server != null) server.close();
+            } catch (Exception e) {
+                System.err.println("[Host] Error closing Uplink: " + e.getMessage());
+            }
+        }
+
+        public void stopPlay() {
+            if (speakerLine != null) {
+                try {
+                    speakerLine.stop();
+                    speakerLine.flush();
+                    speakerLine.close();
+                } catch (Exception e) { }
+                speakerLine = null;
+            }
+        }
+
+        // startPlay() và startAcceptLoop() giữ nguyên như bản fix rè trước đó
         void startAcceptLoop() {
             new Thread(() -> {
                 try {
                     while (shouldRun.get()) {
-                        client = server.accept();
+                        Socket s = server.accept();
+                        if (this.client != null) try { this.client.close(); } catch (Exception ignore) {}
+                        this.client = s;
                         if (enabled.get()) startPlay();
                     }
-                } catch (Exception e) {
-                    System.err.println("[Host] UplinkManager acceptLoop error: " + e.getMessage());
-                }
+                } catch (Exception e) { }
             }, "HostUplinkAccept").start();
         }
 
         void enable() { enabled.set(true); startPlay(); }
-        void disable() { enabled.set(false); }
+        void disable() { enabled.set(false); stopPlay(); }
 
         private void startPlay() {
-            if (client == null || client.isClosed()) return;
-            new Thread(() -> {
-                try (InputStream in = client.getInputStream()) {
-                    // Try different audio formats for better compatibility
-                    AudioFormat[] formats = {
-                            new AudioFormat(44100f, 16, 1, true, false),  // 44.1kHz, 16-bit, mono, signed, little-endian
-                            new AudioFormat(44100f, 16, 1, false, false), // 44.1kHz, 16-bit, mono, unsigned, little-endian
-                            new AudioFormat(44100f, 16, 1, true, true),   // 44.1kHz, 16-bit, mono, signed, big-endian
-                            new AudioFormat(44100f, 8, 1, true, false),   // 44.1kHz, 8-bit, mono, signed, little-endian
-                            new AudioFormat(22050f, 16, 1, true, false),  // 22.05kHz, 16-bit, mono, signed, little-endian
-                            new AudioFormat(16000f, 16, 1, true, false)   // 16kHz, 16-bit, mono, signed, little-endian
-                    };
-
-                    SourceDataLine spk = null;
-                    AudioFormat selectedFormat = null;
-
-                    // Find a supported format
-                    for (AudioFormat format : formats) {
-                        DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-                        if (AudioSystem.isLineSupported(info)) {
-                            try {
-                                spk = (SourceDataLine) AudioSystem.getLine(info);
-                                spk.open(format);
-                                selectedFormat = format;
-                                System.out.println("[Host] Uplink using audio format: " + format);
-                                break;
-                            } catch (Exception e) {
-                                System.out.println("[Host] Uplink format " + format + " failed: " + e.getMessage());
-                                if (spk != null) {
-                                    try { spk.close(); } catch (Exception ignore) {}
-                                    spk = null;
-                                }
-                            }
-                        }
-                    }
-
-                    if (spk == null) {
-                        System.err.println("[Host] Uplink: Không tìm thấy định dạng âm thanh được hỗ trợ nào.");
-                        return;
-                    }
-
-                    spk.start();
-
-                    // Adjust buffer size based on format
-                    int bufferSize = selectedFormat.getSampleSizeInBits() == 8 ? 2048 : 4096;
-                    byte[] b = new byte[bufferSize];
+            if (client == null || client.isClosed() || !enabled.get()) return;
+            stopPlay();
+            playThread = new Thread(() -> {
+                try {
+                    InputStream in = client.getInputStream();
+                    AudioFormat format = new AudioFormat(16000f, 16, 1, true, false);
+                    DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+                    if (!AudioSystem.isLineSupported(info)) return;
+                    speakerLine = (SourceDataLine) AudioSystem.getLine(info);
+                    speakerLine.open(format, (int)(format.getSampleRate() * format.getFrameSize() * 0.2));
+                    speakerLine.start();
+                    byte[] b = new byte[1024];
                     int n;
-
                     while (shouldRun.get() && enabled.get() && (n = in.read(b)) != -1) {
-                        if (n > 0) spk.write(b, 0, n);
+                        if (n > 0) speakerLine.write(b, 0, n);
                     }
-
-                    try { spk.stop(); spk.close(); } catch (Exception ignore) {}
-                } catch (Exception e) {
-                    System.err.println("[Host] UplinkManager startPlay error: " + e.getMessage());
-                }
-            }, "HostUplinkPlay").start();
+                } catch (Exception e) { }
+            }, "HostUplinkPlay");
+            playThread.setDaemon(true);
+            playThread.start();
         }
-
-        void close() { try { server.close(); } catch (Exception e) { } }
     }
-
     @Override
     public void start(Stage stage) throws Exception {
         // Method start chính của App Host (setup màn hình connect)

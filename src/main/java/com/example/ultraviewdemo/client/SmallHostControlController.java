@@ -39,9 +39,7 @@ public class SmallHostControlController {
         Platform.runLater(this::dockToRightSide);
     }
 
-    /**
-     * Đưa cửa sổ về phía bên phải màn hình (Right Drawer)
-     */
+
     private void dockToRightSide() {
         try {
             Stage stage = (Stage) rootBox.getScene().getWindow();
@@ -125,7 +123,6 @@ public class SmallHostControlController {
         }
     }
 
-    // --- CÁC LOGIC KHÁC ---
 
     private void handleStopSharing() {
         try {

@@ -45,7 +45,6 @@ public class ViewerClient extends Application {
     private com.example.ultraviewdemo.UltraViewController uiController;
     private final Object controlWriteLock = new Object();
 
-    // Mode: "viewer" (default) or "host"
     private String mode = "viewer";
 
     // Host mode variables
@@ -1046,9 +1045,23 @@ public class ViewerClient extends Application {
         }
     }
 
-    // Audio control called from UI
+
     private synchronized void enableAudio(boolean enable) {
         if (enable == audioEnabled) return;
+
+        System.out.println("[Viewer] enableAudio called: " + enable);
+
+        // Tắt audio trước nếu đang bật
+        if (enable) {
+            stopAudioPlayer();
+            stopAudioUplink();
+            try {
+                Thread.sleep(200); // Đợi dọn dẹp hoàn tất
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
         audioEnabled = enable;
 
         // Gửi lệnh cho Host biết để bật/tắt Mic/Loa của họ
@@ -1065,238 +1078,240 @@ public class ViewerClient extends Application {
     }
 
     private void startAudioPlayer() {
-        if (audioThread != null && audioThread.isAlive()) return;
+        // Dừng luồng cũ nếu còn chạy
+        if (audioThread != null && audioThread.isAlive()) {
+            System.out.println("[Viewer] Stopping existing audio player thread");
+            stopAudioPlayer();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        System.out.println("[Viewer] Starting new audio player");
 
         audioThread = new Thread(() -> {
-            // QUAN TRỌNG: hostStreamPort phải là cổng cơ sở (ví dụ 5000)
-            // Nếu hostStreamPort từ Directory là 5000, thì audioPort là 5002
             int audioPort = hostStreamPort + 2;
+            System.out.println("[Viewer] Connecting to Host Audio Server at port: " + audioPort);
 
-            System.out.println("[Viewer] Đang kết nối tới Host Audio Server tại cổng: " + audioPort);
+            Socket localSocket = null;
+            SourceDataLine localSpeakerLine = null;
 
-            while (audioEnabled) {
-                try (Socket s = new Socket(hostIp, audioPort);
-                     InputStream in = s.getInputStream()) {
+            try {
+                localSocket = new Socket(hostIp, audioPort);
+                this.audioSocket = localSocket;
 
-                    this.audioSocket = s;
-                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
-                    DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
+                InputStream in = localSocket.getInputStream();
 
-                    if (!AudioSystem.isLineSupported(info)) {
-                        System.err.println("[Viewer] Loa không hỗ trợ định dạng âm thanh này.");
-                        break;
-                    }
+                AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
+                DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
 
-                    speakerLine = (SourceDataLine) AudioSystem.getLine(info);
-                    speakerLine.open(fmt);
-                    speakerLine.start();
-
-                    byte[] buf = new byte[4096];
-                    int n;
-                    while (audioEnabled && !s.isClosed() && (n = in.read(buf)) != -1) {
-                        if (n > 0) {
-                            speakerLine.write(buf, 0, n);
-                        }
-                    }
-                } catch (Exception e) {
-                    if (audioEnabled) {
-                        System.err.println("[Viewer] Lỗi nhận âm thanh (đang thử lại...): " + e.getMessage());
-                        try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
-                    }
-                } finally {
-                    cleanupAudioResources();
+                if (!AudioSystem.isLineSupported(info)) {
+                    System.err.println("[Viewer] Speaker audio format not supported");
+                    return;
                 }
+
+                localSpeakerLine = (SourceDataLine) AudioSystem.getLine(info);
+                this.speakerLine = localSpeakerLine;
+
+                localSpeakerLine.open(fmt);
+                localSpeakerLine.start();
+
+                System.out.println("[Viewer] Audio player started successfully");
+
+                byte[] buf = new byte[4096];
+                int n;
+
+                while (audioEnabled && !localSocket.isClosed() && (n = in.read(buf)) != -1) {
+                    if (n > 0 && audioEnabled) {
+                        localSpeakerLine.write(buf, 0, n);
+                    }
+                }
+
+                System.out.println("[Viewer] Audio player loop ended normally");
+
+            } catch (Exception e) {
+                if (audioEnabled) {
+                    System.err.println("[Viewer] Audio player error: " + e.getMessage());
+                }
+            } finally {
+                // Cleanup
+                if (localSpeakerLine != null) {
+                    try {
+                        localSpeakerLine.drain();
+                        localSpeakerLine.stop();
+                        localSpeakerLine.close();
+                    } catch (Exception e) {
+                        System.err.println("[Viewer] Error closing speaker line: " + e.getMessage());
+                    }
+                }
+
+                if (localSocket != null) {
+                    try {
+                        localSocket.close();
+                    } catch (Exception e) {
+                        System.err.println("[Viewer] Error closing audio socket: " + e.getMessage());
+                    }
+                }
+
+                this.speakerLine = null;
+                this.audioSocket = null;
+
+                System.out.println("[Viewer] Audio player cleaned up");
             }
         }, "ViewerAudioPlayer");
+
         audioThread.setDaemon(true);
         audioThread.start();
     }
 
-    private void cleanupAudioResources() {
-        try {
-            if (speakerLine != null) {
-                speakerLine.drain();
-                speakerLine.stop();
-                speakerLine.close();
-                speakerLine = null;
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private AudioFormat pickOutputFormat() {
-        // Dùng cùng format với Host (44.1kHz mono 16-bit LE) để tránh lệch sample rate
-        AudioFormat audio = new AudioFormat(44100f, 16, 1, true, false);
-        return audio;
-    }
-
     private synchronized void stopAudioPlayer() {
+        System.out.println("[Viewer] Stopping audio player");
         audioEnabled = false;
-        try {
-            if (audioSocket != null) audioSocket.close();
-        } catch (Exception ignore) {
+
+        // Close socket first to break the read loop
+        if (audioSocket != null) {
+            try {
+                audioSocket.close();
+            } catch (Exception e) {
+                System.err.println("[Viewer] Error closing audio socket: " + e.getMessage());
+            }
+            audioSocket = null;
         }
-        try {
-            if (speakerLine != null) {
+
+        // Stop and close speaker line
+        if (speakerLine != null) {
+            try {
                 speakerLine.stop();
                 speakerLine.close();
+            } catch (Exception e) {
+                System.err.println("[Viewer] Error closing speaker line: " + e.getMessage());
             }
-        } catch (Exception ignore) {
+            speakerLine = null;
         }
-        speakerLine = null;
+
+        // Wait for thread to finish
         if (audioThread != null) {
             try {
-                audioThread.join(200);
-            } catch (InterruptedException ignore) {
+                audioThread.join(500);
+                if (audioThread.isAlive()) {
+                    System.err.println("[Viewer] Audio thread did not stop in time");
+                    audioThread.interrupt();
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
             audioThread = null;
         }
+
+        System.out.println("[Viewer] Audio player stopped");
     }
 
     private void startAudioUplink() {
-        if (uplinkThread != null && uplinkThread.isAlive()) return;
+        if (uplinkThread != null && uplinkThread.isAlive()) {
+            stopAudioUplink();
+            try { Thread.sleep(200); } catch (InterruptedException e) {}
+        }
+
         uplinkThread = new Thread(() -> {
             int uplinkPort = hostStreamPort + 3;
-            while (audioEnabled) {
-                try (Socket s = new Socket(hostIp, uplinkPort); OutputStream out = s.getOutputStream()) {
-                    uplinkSocket = s;
-                    // Use 44.1kHz for better device compatibility
-                    AudioFormat fmt = new AudioFormat(44100f, 16, 1, true, false);
-                    DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
-                    if (!AudioSystem.isLineSupported(info)) {
-                        break;
-                    }
-                    micLine = (TargetDataLine) AudioSystem.getLine(info);
-                    micLine.open(fmt);
-                    micLine.start();
-                    // ~50ms @ 44.1kHz mono 16-bit ~= 44100 * 2 * 0.05 ≈ 4410 bytes
-                    byte[] buf = new byte[4410];
-                    while (audioEnabled && !s.isClosed()) {
-                        int n = micLine.read(buf, 0, buf.length);
-                        if (n > 0) out.write(buf, 0, n);
-                    }
-                } catch (Exception e) {
-                } finally {
-                    if (micLine != null) {
-                        try {
-                            micLine.stop();
-                            micLine.close();
-                        } catch (Exception ignore) {
-                        }
-                        micLine = null;
-                    }
-                    if (uplinkSocket != null) {
-                        try {
-                            uplinkSocket.close();
-                        } catch (Exception ignore) {
-                        }
-                        uplinkSocket = null;
+            Socket localSocket = null;
+            TargetDataLine localMicLine = null;
+
+            try {
+                localSocket = new Socket(hostIp, uplinkPort);
+                this.uplinkSocket = localSocket;
+                OutputStream out = localSocket.getOutputStream();
+
+                // Thống nhất định dạng 16kHz, 16-bit, Mono
+                AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
+                DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
+
+                if (!AudioSystem.isLineSupported(info)) {
+                    System.err.println("[Viewer] Microphone không hỗ trợ định dạng này");
+                    return;
+                }
+
+                localMicLine = (TargetDataLine) AudioSystem.getLine(info);
+                // Tăng Buffer phần cứng lên 100ms để tránh mất dữ liệu khi mạng lag
+                localMicLine.open(fmt, (int)(fmt.getSampleRate() * fmt.getFrameSize() * 0.1));
+                this.micLine = localMicLine;
+
+                localMicLine.start();
+                System.out.println("[Viewer] Audio Uplink started (16kHz)");
+
+                byte[] buf = new byte[1024]; // Gửi từng khối 1KB để tối ưu packet mạng
+                int n;
+
+                while (audioEnabled && !localSocket.isClosed()) {
+                    n = localMicLine.read(buf, 0, buf.length);
+                    if (n > 0 && audioEnabled) {
+                        out.write(buf, 0, n);
+                        // Để OS tự quản lý việc flush để tránh quá tải CPU
                     }
                 }
-                if (audioEnabled) {
-                    try {
-                        Thread.sleep(300);
-                    } catch (InterruptedException ignore) {
-                    }
+            } catch (Exception e) {
+                System.err.println("[Viewer] Audio uplink error: " + e.getMessage());
+            } finally {
+                if (localMicLine != null) {
+                    localMicLine.stop();
+                    localMicLine.close();
                 }
+                try { if (localSocket != null) localSocket.close(); } catch (IOException e) {}
+                this.micLine = null;
+                this.uplinkSocket = null;
             }
         }, "ViewerAudioUplink");
+
+        uplinkThread.setDaemon(true);
         uplinkThread.start();
     }
 
-    private void runViewerMicTest() {
-        try {
-            AudioFormat fmt = new AudioFormat(16000f, 16, 1, true, false);
-            DataLine.Info info = new DataLine.Info(TargetDataLine.class, fmt);
-            if (!AudioSystem.isLineSupported(info)) return;
-            TargetDataLine line = (TargetDataLine) AudioSystem.getLine(info);
-            line.open(fmt);
-            line.start();
-            int seconds = 2;
-            byte[] data = new byte[seconds * 16000 * 2];
-            int off = 0;
-            while (off < data.length) {
-                int n = line.read(data, off, Math.min(1600, data.length - off));
-                if (n <= 0) break;
-                off += n;
-            }
-            try {
-                line.stop();
-                line.close();
-            } catch (Exception ignore) {
-            }
-            File f = getAudioSaveFile("viewer_mic_test");
-            writeWavPcm16Le(f, data, 16000, 1);
-            playBuffer(fmt, data, off);
-            System.out.println("Saved viewer mic test: " + f.getAbsolutePath());
-        } catch (Exception ignored) {
-        }
-    }
-
-    public static void writeWavPcm16Le(File file, byte[] pcm, int sampleRate, int channels) throws IOException {
-        int byteRate = sampleRate * channels * 2;
-        int dataLen = pcm.length;
-        int chunkSize = 36 + dataLen;
-        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))) {
-            dos.writeBytes("RIFF");
-            dos.writeInt(Integer.reverseBytes(chunkSize));
-            dos.writeBytes("WAVE");
-            dos.writeBytes("fmt ");
-            dos.writeInt(Integer.reverseBytes(16));
-            dos.writeShort(Short.reverseBytes((short) 1));
-            dos.writeShort(Short.reverseBytes((short) channels));
-            dos.writeInt(Integer.reverseBytes(sampleRate));
-            dos.writeInt(Integer.reverseBytes(byteRate));
-            dos.writeShort(Short.reverseBytes((short) (channels * 2)));
-            dos.writeShort(Short.reverseBytes((short) 16));
-            dos.writeBytes("data");
-            dos.writeInt(Integer.reverseBytes(dataLen));
-            dos.write(pcm, 0, dataLen);
-        }
-    }
-
-    private static void playBuffer(AudioFormat fmt, byte[] pcm, int len) throws LineUnavailableException {
-        DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
-        if (!AudioSystem.isLineSupported(info)) return;
-        SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
-        line.open(fmt);
-        line.start();
-        line.write(pcm, 0, len);
-        try {
-            line.drain();
-        } catch (Exception ignore) {
-        }
-        line.stop();
-        line.close();
-    }
-
-    public static File getAudioSaveFile(String base) {
-        String dirProp = System.getProperty("ultraview.audio.dir");
-        File dir = (dirProp != null && !dirProp.isEmpty()) ? new File(dirProp) : new File(System.getProperty("user.home") + File.separator + "UltraView" + File.separator + "audio");
-        if (!dir.exists()) dir.mkdirs();
-        String name = base + "_" + System.currentTimeMillis() + ".wav";
-        return new File(dir, name);
-    }
-
     private synchronized void stopAudioUplink() {
-        try {
-            if (uplinkSocket != null) uplinkSocket.close();
-        } catch (Exception ignore) {
-        }
-        try {
-            if (micLine != null) {
+        System.out.println("[Viewer] Stopping audio uplink");
+
+        // Stop mic line first để ngừng capture
+        if (micLine != null) {
+            try {
                 micLine.stop();
+                micLine.flush(); // QUAN TRỌNG: Xóa buffer để tránh rè
+                Thread.sleep(50); // Đợi buffer clear
                 micLine.close();
+                System.out.println("[Viewer] Mic line stopped and closed");
+            } catch (Exception e) {
+                System.err.println("[Viewer] Error closing mic line: " + e.getMessage());
             }
-        } catch (Exception ignore) {
+            micLine = null;
         }
-        micLine = null;
+
+        // Close socket sau
+        if (uplinkSocket != null) {
+            try {
+                uplinkSocket.close();
+                System.out.println("[Viewer] Uplink socket closed");
+            } catch (Exception e) {
+                System.err.println("[Viewer] Error closing uplink socket: " + e.getMessage());
+            }
+            uplinkSocket = null;
+        }
+
+        // Wait for thread to finish
         if (uplinkThread != null) {
             try {
-                uplinkThread.join(200);
-            } catch (InterruptedException ignore) {
+                uplinkThread.join(1000); // Tăng timeout lên 1 giây
+                if (uplinkThread.isAlive()) {
+                    System.err.println("[Viewer] Uplink thread did not stop in time, interrupting");
+                    uplinkThread.interrupt();
+                    uplinkThread.join(500); // Đợi thêm sau interrupt
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
             uplinkThread = null;
         }
+
+        System.out.println("[Viewer] Audio uplink stopped completely");
     }
 
     private void setupRemoteControlEvents(ImageView imageView) {
