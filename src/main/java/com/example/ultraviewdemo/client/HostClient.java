@@ -97,13 +97,24 @@ public class HostClient extends Application {
                     SocketMethodHelpers.sendMessage(streamSocket, screenModel);
                     Thread.sleep(100);
                 }
-            } finally { try { out.close(); } catch (Exception ignore) {} }
+            } finally {
+                try {
+                    out.close();
+                } catch (Exception ignore) {
+                }
+            }
         } finally {
             try {
                 notifyViewerHostStopping();
             } catch (Exception ignore) {
             }
-            try { streamServer.close(); controlServer.close(); audioServer.close(); uplinkServer.close(); } catch (Exception ignore) {}
+            try {
+                streamServer.close();
+                controlServer.close();
+                audioServer.close();
+                uplinkServer.close();
+            } catch (Exception ignore) {
+            }
         }
     }
 
@@ -144,16 +155,20 @@ public class HostClient extends Application {
                     msg.setMessage("AUDIO_CMD:" + action);
                     SocketMethodHelpers.sendMessageNoTrack(controlSocketRef, msg);
                 }
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     public static void enableAudioSystem(boolean enable) {
         if (staticAudioManager != null) {
-            if (enable) staticAudioManager.enable(); else staticAudioManager.disable();
+            if (enable) staticAudioManager.enable();
+            else staticAudioManager.disable();
         }
         if (staticUplinkManager != null) {
-            if (enable) staticUplinkManager.enable(); else staticUplinkManager.disable();
+            if (enable) staticUplinkManager.enable();
+            else staticUplinkManager.disable();
         }
     }
 
@@ -182,10 +197,14 @@ public class HostClient extends Application {
                 smallStage.setHeight(h);
                 smallStage.setX(bounds.getMaxX() - w);
                 smallStage.setY(bounds.getMinY() + (bounds.getHeight() - h) / 2.0);
-            } catch (Exception ignore) {}
+            } catch (Exception ignore) {
+
+            }
 
             smallStage.show();
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void startControlAccept(ServerSocket controlServer, String hostId, String password, BooleanSupplier shouldRun) {
@@ -215,7 +234,8 @@ public class HostClient extends Application {
                     MessageModel info = new MessageModel(Constant.ACTION_HOST, hostId);
                     info.setMessage("HOST_SCREEN:" + screenRect.width + ":" + screenRect.height);
                     SocketMethodHelpers.sendMessage(controlSocket, info);
-                } catch (Exception ignore) {}
+                } catch (Exception ignore) {
+                }
 
                 while (shouldRun.getAsBoolean() && !controlSocket.isClosed()) {
                     MessageModel incoming = SocketMethodHelpers.readMessage(controlSocket);
@@ -237,10 +257,16 @@ public class HostClient extends Application {
                     try {
                         HostChatWindow.hide();
                         if (smallControllerRef != null) {
-                            try { smallControllerRef.updateAudioUI(false); } catch (Exception ignore) {}
+                            try {
+                                smallControllerRef.updateAudioUI(false);
+                            } catch (Exception ignore) {
+                            }
                         }
                         if (smallStage != null) {
-                            try { smallStage.close(); } catch (Exception ignore) {}
+                            try {
+                                smallStage.close();
+                            } catch (Exception ignore) {
+                            }
                             smallStage = null;
                         }
                     } catch (Exception ignore) {
@@ -268,7 +294,8 @@ public class HostClient extends Application {
                         break;
                     case "OFF":
                         enableAudioSystem(false);
-                        if (smallControllerRef != null) Platform.runLater(() -> smallControllerRef.updateAudioUI(false));
+                        if (smallControllerRef != null)
+                            Platform.runLater(() -> smallControllerRef.updateAudioUI(false));
                         break;
                 }
                 return;
@@ -301,7 +328,12 @@ public class HostClient extends Application {
             if (command.startsWith("CHAT:")) {
                 String text = command.substring(5);
                 Platform.runLater(() -> {
-                    try { HostChatWindow.initIfNeeded(); HostChatWindow.show(); HostChatWindow.addMessage("Viewer", text); } catch (Exception e) {}
+                    try {
+                        HostChatWindow.initIfNeeded();
+                        HostChatWindow.show();
+                        HostChatWindow.addMessage("Viewer", text);
+                    } catch (Exception e) {
+                    }
                 });
                 return;
             }
@@ -323,7 +355,8 @@ public class HostClient extends Application {
                                 HostChatWindow.initIfNeeded();
                                 HostChatWindow.show();
                                 HostChatWindow.addMessage("System", "Received file from viewer: " + fileName + " -> " + out.toString());
-                            } catch (Exception ignore) {}
+                            } catch (Exception ignore) {
+                            }
                         });
                     } catch (IOException ioe) {
                         ioe.printStackTrace();
@@ -344,26 +377,32 @@ public class HostClient extends Application {
                     String btn = parts.length > 3 ? parts[3] : "PRIMARY";
                     int mask = "SECONDARY".equals(btn) ? InputEvent.BUTTON3_DOWN_MASK :
                             "MIDDLE".equals(btn) ? InputEvent.BUTTON2_DOWN_MASK : InputEvent.BUTTON1_DOWN_MASK;
-                    robot.mouseMove((int)x, (int)y); robot.mousePress(mask); robot.mouseRelease(mask);
+                    robot.mouseMove((int) x, (int) y);
+                    robot.mousePress(mask);
+                    robot.mouseRelease(mask);
                     break;
                 case "MOUSE_DRAG":
                 case "MOUSE_MOVE": // Thêm support move nếu cần
-                    robot.mouseMove((int)Double.parseDouble(parts[1]), (int)Double.parseDouble(parts[2]));
+                    robot.mouseMove((int) Double.parseDouble(parts[1]), (int) Double.parseDouble(parts[2]));
                     break;
                 case "MOUSE_SCROLL":
-                    robot.mouseWheel(-(int)(Double.parseDouble(parts[3]) / 20.0));
+                    robot.mouseWheel(-(int) (Double.parseDouble(parts[3]) / 20.0));
                     break;
                 case "KEY_PRESSED":
-                    int kp = getKeyCode(parts[1]); if (kp != -1) robot.keyPress(kp);
+                    int kp = getKeyCode(parts[1]);
+                    if (kp != -1) robot.keyPress(kp);
                     break;
                 case "KEY_RELEASED":
-                    int kr = getKeyCode(parts[1]); if (kr != -1) robot.keyRelease(kr);
+                    int kr = getKeyCode(parts[1]);
+                    if (kr != -1) robot.keyRelease(kr);
                     break;
                 case "KEY_TYPED":
                     // Logic gõ text giữ nguyên từ code cũ của bạn
                     break;
             }
-        } catch (Exception e) { System.err.println("Cmd Err: " + e.getMessage()); }
+        } catch (Exception e) {
+            System.err.println("Cmd Err: " + e.getMessage());
+        }
     }
 
     // --- Helpers giữ nguyên ---
@@ -375,8 +414,15 @@ public class HostClient extends Application {
                 m.setMessage("CHAT:" + text);
                 SocketMethodHelpers.sendMessageNoTrack(controlSocketRef, m);
             }
-            Platform.runLater(() -> { try { HostChatWindow.show(); HostChatWindow.addMessage("Host", text); } catch (Exception e){} });
-        } catch(Exception e){}
+            Platform.runLater(() -> {
+                try {
+                    HostChatWindow.show();
+                    HostChatWindow.addMessage("Host", text);
+                } catch (Exception e) {
+                }
+            });
+        } catch (Exception e) {
+        }
     }
 
     public static void sendFileFromUI(File file) {
@@ -400,7 +446,8 @@ public class HostClient extends Application {
                 try {
                     HostChatWindow.show();
                     HostChatWindow.addMessage("Host", "Sent file: " + file.getName());
-                } catch (Exception ignore) {}
+                } catch (Exception ignore) {
+                }
             });
         } catch (IOException e) {
             System.err.println("[Host] Error sending file: " + e.getMessage());
@@ -408,7 +455,9 @@ public class HostClient extends Application {
         }
     }
 
-    public static boolean isControlConnected() { return controlSocketRef != null && !controlSocketRef.isClosed(); }
+    public static boolean isControlConnected() {
+        return controlSocketRef != null && !controlSocketRef.isClosed();
+    }
 
     private static ServerSocket createServerSocket(int port) throws IOException {
         ServerSocket ss = new ServerSocket();
@@ -443,7 +492,10 @@ public class HostClient extends Application {
             this.shouldRun = new AtomicBoolean(true);
             new Thread(() -> {
                 while (runFlag.getAsBoolean()) {
-                    try { Thread.sleep(500); } catch (Exception e) { }
+                    try {
+                        Thread.sleep(500);
+                    } catch (Exception e) {
+                    }
                 }
                 close();
             }).start();
@@ -457,7 +509,10 @@ public class HostClient extends Application {
 
                         // Đóng client cũ nếu có
                         if (this.client != null) {
-                            try { this.client.close(); } catch (Exception ignore) {}
+                            try {
+                                this.client.close();
+                            } catch (Exception ignore) {
+                            }
                         }
 
                         this.client = s;
@@ -550,7 +605,10 @@ public class HostClient extends Application {
                             } catch (Exception e) {
                                 System.out.println("[Host] Format failed: " + e.getMessage());
                                 if (localMic != null) {
-                                    try { localMic.close(); } catch (Exception ignore) {}
+                                    try {
+                                        localMic.close();
+                                    } catch (Exception ignore) {
+                                    }
                                     localMic = null;
                                 }
                             }
@@ -610,9 +668,10 @@ public class HostClient extends Application {
             enabled.set(false);
             stopStream();
             try {
-                if(client != null) client.close();
+                if (client != null) client.close();
                 server.close();
-            } catch (Exception e) { }
+            } catch (Exception e) {
+            }
         }
     }
 
@@ -630,7 +689,10 @@ public class HostClient extends Application {
             // Thread tự hủy khi Host dừng sharing
             new Thread(() -> {
                 while (runFlag.getAsBoolean()) {
-                    try { Thread.sleep(500); } catch (Exception e) { }
+                    try {
+                        Thread.sleep(500);
+                    } catch (Exception e) {
+                    }
                 }
                 close();
             }).start();
@@ -655,7 +717,8 @@ public class HostClient extends Application {
                     speakerLine.stop();
                     speakerLine.flush();
                     speakerLine.close();
-                } catch (Exception e) { }
+                } catch (Exception e) {
+                }
                 speakerLine = null;
             }
         }
@@ -666,16 +729,27 @@ public class HostClient extends Application {
                 try {
                     while (shouldRun.get()) {
                         Socket s = server.accept();
-                        if (this.client != null) try { this.client.close(); } catch (Exception ignore) {}
+                        if (this.client != null) try {
+                            this.client.close();
+                        } catch (Exception ignore) {
+                        }
                         this.client = s;
                         if (enabled.get()) startPlay();
                     }
-                } catch (Exception e) { }
+                } catch (Exception e) {
+                }
             }, "HostUplinkAccept").start();
         }
 
-        void enable() { enabled.set(true); startPlay(); }
-        void disable() { enabled.set(false); stopPlay(); }
+        void enable() {
+            enabled.set(true);
+            startPlay();
+        }
+
+        void disable() {
+            enabled.set(false);
+            stopPlay();
+        }
 
         private void startPlay() {
             if (client == null || client.isClosed() || !enabled.get()) return;
@@ -687,19 +761,21 @@ public class HostClient extends Application {
                     DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
                     if (!AudioSystem.isLineSupported(info)) return;
                     speakerLine = (SourceDataLine) AudioSystem.getLine(info);
-                    speakerLine.open(format, (int)(format.getSampleRate() * format.getFrameSize() * 0.2));
+                    speakerLine.open(format, (int) (format.getSampleRate() * format.getFrameSize() * 0.2));
                     speakerLine.start();
                     byte[] b = new byte[1024];
                     int n;
                     while (shouldRun.get() && enabled.get() && (n = in.read(b)) != -1) {
                         if (n > 0) speakerLine.write(b, 0, n);
                     }
-                } catch (Exception e) { }
+                } catch (Exception e) {
+                }
             }, "HostUplinkPlay");
             playThread.setDaemon(true);
             playThread.start();
         }
     }
+
     @Override
     public void start(Stage stage) throws Exception {
         // Method start chính của App Host (setup màn hình connect)
@@ -708,5 +784,7 @@ public class HostClient extends Application {
         stage.show();
     }
 
-    public static void main(String[] args) { launch(args); }
+    public static void main(String[] args) {
+        launch(args);
+    }
 }
